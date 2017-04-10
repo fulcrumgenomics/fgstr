@@ -104,7 +104,7 @@ class DuplexConsensusPipeline
 
     val bwaDs = Bwa.bwaMemStreamed(unmappedBam=dsUnmapped, mappedBam=dsMapped, ref=ref, samToFastqCores=0, bwaMemMemory="6G", mergeBamAlignmentMem="6G")
 
-    val postPipeline = new PostDuplexConsensusPipeline(input=dir, ref=ref, intervals=regionsIl, output=dir,
+    val postPipeline = new PostDuplexConsensusPipeline(input=dsMapped, ref=ref, intervals=regionsIl, output=output,
       minConsensusBaseQuality=minConsensusBaseQuality, minReads=minReads, maxBaseErrorRate=maxBaseErrorRate,
       maxNoCallFraction=maxNoCallFraction, minimumAf=minimumAf)
 
