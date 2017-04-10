@@ -22,7 +22,7 @@ val htmlReportsDirectory: String = "target/test-reports"
 val docScalacOptions = Seq("-groups", "-implicits")
 
 //////////////////////////////////////////////////////////////////////////////////////////////// 
-//Common settings for all projects
+// Common settings for all projects
 ////////////////////////////////////////////////////////////////////////////////////////////////
 
 lazy val commonSettings = Seq(
@@ -81,7 +81,7 @@ lazy val pipelines = Project(id="fgstr-pipeline", base=file("pipelines"))
   .settings(commonSettings: _*)
   .settings(
     libraryDependencies ++= Seq(
-      "com.fulcrumgenomics" %%  "fgbio"       %  "0.1.4-SNAPSHOT",
+      "com.fulcrumgenomics" %% "fgbio"        %  "0.1.4-SNAPSHOT",
       "com.fulcrumgenomics" %% "dagr"         % dagrVersion excludeAll(htsjdkAndPicardExcludes:_*),
       "com.fulcrumgenomics" %% "dagr-commons" % dagrVersion excludeAll(htsjdkAndPicardExcludes:_*)
     )
