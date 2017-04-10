@@ -25,6 +25,8 @@
 
 package com.fulcrumgenomics.str.pipelines
 
+import java.nio.file.Files
+
 import dagr.commons.io.{Io, PathUtil}
 import dagr.core.cmdline.Pipelines
 import dagr.core.tasksystem.Pipeline
@@ -71,12 +73,10 @@ class PostDuplexConsensusPipeline
     Io.assertCanWriteFile(output, parentMustExist=false)
 
     // Files that we're going to create
-    val outDir      = output.getParent
-    val inDir       = input.getParent
-    val dsFiltered  = outDir.resolve(output.getFileName + ".consensus.filtered.bam")
+    val dsFiltered = PathUtil.pathTo(output + ".consensus.filtered.bam")
+    val regionsBed = Files.createTempFile("calling_regions.", ".bed")
 
     // Make a BED file for the calling region.
-    val regionsBed  = inDir.resolve("calling_regions.bed")
     val makeBed     = new IntervalListToBed(intervals=intervals, bed=regionsBed)
 
     // Filter the duplex consensus reads
