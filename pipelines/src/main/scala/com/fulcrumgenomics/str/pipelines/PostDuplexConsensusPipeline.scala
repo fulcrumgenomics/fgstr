@@ -47,7 +47,7 @@ import htsjdk.variant.vcf.VCFFileReader
 )
 class PostDuplexConsensusPipeline
 (
-  @arg(flag="o", doc="Path to the input consensus duplex BAM.") val input: PathToBam,
+  @arg(flag="i", doc="Path to the input consensus duplex BAM.") val input: PathToBam,
   @arg(flag="r", doc="Path to the reference FASTA.")            val ref: PathToFasta,
   @arg(flag="l", doc="Regions to analyze.")                     val intervals: PathToIntervals,
   @arg(flag="o", doc="Path prefix for output files.")           val output: PathPrefix,
