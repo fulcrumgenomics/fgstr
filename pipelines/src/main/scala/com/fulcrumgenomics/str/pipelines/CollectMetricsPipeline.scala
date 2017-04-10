@@ -25,10 +25,10 @@ class CollectMetricsPipeline
 )
   extends Pipeline(Some(output.getParent)) {
 
-  Io.assertReadable(input)
-  Io.assertCanWriteFile(output, parentMustExist=false)
-
   def build(): Unit = {
+    Io.assertReadable(input)
+    Io.assertCanWriteFile(output, parentMustExist=false)
+
     root ==> new CollectAlignmentSummaryMetrics(in=input, ref=ref)
     root ==> new CollectHsMetrics(in=input, ref=ref, targets=intervals)
     root ==> new CollectSequencingArtifactMetrics(in=input, ref=ref, intervals=Some(intervals), minBq=Some(30), contextSize=Some(0))

@@ -65,10 +65,11 @@ class PostDuplexConsensusPipeline
 )
   extends Pipeline(Some(output.getParent)) {
 
-  Io.assertReadable(input)
-  Io.assertCanWriteFile(output, parentMustExist=false)
-
   def build(): Unit = {
+
+    Io.assertReadable(input)
+    Io.assertCanWriteFile(output, parentMustExist=false)
+
     // Files that we're going to create
     val outDir      = output.getParent
     val inDir       = input.getParent

@@ -70,10 +70,11 @@ class DuplexConsensusPipeline
 )
   extends Pipeline(Some(output.getParent)) {
 
-  Io.assertReadable(unmappedBam)
-  Io.assertCanWriteFile(output, parentMustExist=false)
-
   override def build(): Unit = {
+
+    Io.assertReadable(unmappedBam)
+    Io.assertCanWriteFile(output, parentMustExist=false)
+
     // Files that we're going to create
     val dir = output.getParent
     val pre = output.getFileName
