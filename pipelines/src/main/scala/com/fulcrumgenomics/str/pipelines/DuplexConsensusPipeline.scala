@@ -53,7 +53,7 @@ class DuplexConsensusPipeline
  @arg(flag="o", doc="Path prefix for output files.")             val output: PathPrefix,
  @arg(flag="u", doc="The tag containing the raw UMI.")           val umiTag: String = "RX",
  @arg(flag="m", doc="Minimum mapping quality to include reads.") val minMapQ: Int = 10,
- @arg(flag="e", doc="The allowable number of edits between UMIs.") val edits: Int = 1,
+ @arg(flag="x", doc="The allowable number of edits between UMIs.") val edits: Int = 1,
  @arg(flag="1", doc="The Phred-scaled error rate for an error prior to the UMIs being integrated.") val errorRatePreUmi: Option[Int] = Some(45),
  @arg(flag="2", doc="The Phred-scaled error rate for an error post the UMIs have been integrated.") val errorRatePostUmi: Option[Int] = Some(30),
  @arg(          doc="The minimum input base quality for bases to go into consensus.")               val minInputBaseQuality: Option[Int] = Some(20),
