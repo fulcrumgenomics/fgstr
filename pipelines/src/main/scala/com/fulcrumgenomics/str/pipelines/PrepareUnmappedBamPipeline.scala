@@ -28,13 +28,13 @@ package com.fulcrumgenomics.str.pipelines
 import java.nio.file.{Files, Path}
 
 import com.fulcrumgenomics.FgBioDef._
+import com.fulcrumgenomics.sopt.{arg, clp}
 import com.fulcrumgenomics.str.tasks.FgStrTask
 import com.fulcrumgenomics.umi.ConsensusTags
 import dagr.commons.io.Io
 import dagr.core.cmdline.Pipelines
 import dagr.core.config.Configuration
 import dagr.core.tasksystem.{Pipeline, ProcessTask}
-import dagr.sopt.{arg, clp}
 import dagr.tasks.DagrDef.{PathPrefix, PathToFastq}
 import dagr.tasks.DataTypes.SamOrBam
 import dagr.tasks.fgbio.{ExtractUmisFromBam, FgBioTask}
@@ -56,15 +56,15 @@ object PrepareUnmappedBamPipeline extends Configuration {
   """)
 class PrepareUnmappedBamPipeline
 (
-  @arg(flag="1", doc="Input fastq file (optionally gzipped) for read 1.") val fastq1: List[PathToFastq],
-  @arg(flag="2", doc="Input fastq file (optionally gzipped) for read 2.") val fastq2: List[PathToFastq],
-  @arg(flag="o", doc="Output file prefix (e.g.dir/sample_name).")         val output: PathPrefix,
-  @arg(flag="S", doc="The name of the sample.")                           val sample: String,
-  @arg(flag="L", doc="The name of the library.")                          val library: String,
-  @arg(flag="P", doc="The platform unit (@RG.PU).  Either one value or one per pair of FASTQs.") val platformUnit: List[String],
-  @arg(flag="t", doc="Path to a temporary directory.  Use output if none is given.") val tmp: Option[DirPath] = None,
-  @arg(flag="A", doc="The read structure for read one.") val readStructureReadOne: String,
-  @arg(flag="B", doc="The read structure for read two.") val readStructureReadTwo: String
+  @arg(flag='1', doc="Input fastq file (optionally gzipped) for read 1.") val fastq1: List[PathToFastq],
+  @arg(flag='2', doc="Input fastq file (optionally gzipped) for read 2.") val fastq2: List[PathToFastq],
+  @arg(flag='o', doc="Output file prefix (e.g.dir/sample_name).")         val output: PathPrefix,
+  @arg(flag='S', doc="The name of the sample.")                           val sample: String,
+  @arg(flag='L', doc="The name of the library.")                          val library: String,
+  @arg(flag='P', doc="The platform unit (@RG.PU).  Either one value or one per pair of FASTQs.") val platformUnit: List[String],
+  @arg(flag='t', doc="Path to a temporary directory.  Use output if none is given.") val tmp: Option[DirPath] = None,
+  @arg(flag='A', doc="The read structure for read one.") val readStructureReadOne: String,
+  @arg(flag='B', doc="The read structure for read two.") val readStructureReadTwo: String
 )  extends Pipeline(outputDirectory=Some(output.getParent), suffix=Some("." + library)) {
   import PrepareUnmappedBamPipeline.requireConfigure
 

@@ -31,7 +31,7 @@ lazy val commonSettings = Seq(
   organizationHomepage := Some(url("http://www.fulcrumgenomics.com")),
   homepage             := Some(url("http://github.com/fulcrumgenomics/fgstr")),
   startYear            := Some(2017),
-  scalaVersion         := "2.11.8",
+  scalaVersion         := "2.11.11",
   scalacOptions        += "-target:jvm-1.8",
   scalacOptions in (Compile, doc) ++= docScalacOptions,
   scalacOptions in (Test, doc) ++= docScalacOptions,
@@ -74,16 +74,17 @@ lazy val htsjdkAndPicardExcludes = Seq(
   ExclusionRule(organization="com.google.cloud.genomics")
 )
 
-val dagrVersion = "0.1.3-SNAPSHOT"
+val dagrVersion = "0.2.0-SNAPSHOT"
 
 lazy val pipelines = Project(id="fgstr-pipeline", base=file("pipelines"))
   .settings(description := "dagr pipelines for processing STR duplex sequencing data.")
   .settings(commonSettings: _*)
   .settings(
     libraryDependencies ++= Seq(
-      "com.fulcrumgenomics" %% "fgbio"        %  "0.1.4-SNAPSHOT",
+      "com.fulcrumgenomics" %% "commons"      % "0.2.0-SNAPSHOT",
+      "com.fulcrumgenomics" %% "sopt"         % "0.2.0-SNAPSHOT",
       "com.fulcrumgenomics" %% "dagr"         % dagrVersion excludeAll(htsjdkAndPicardExcludes:_*),
-      "com.fulcrumgenomics" %% "dagr-commons" % dagrVersion excludeAll(htsjdkAndPicardExcludes:_*)
+      "com.fulcrumgenomics" %% "fgbio"        % "0.2.0-SNAPSHOT"
     )
   )//.dependsOn(tools)
 

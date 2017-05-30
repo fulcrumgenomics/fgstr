@@ -27,15 +27,14 @@ package com.fulcrumgenomics.str.pipelines
 
 import java.nio.file.Files
 
+import com.fulcrumgenomics.sopt.{arg, clp}
 import dagr.commons.io.{Io, PathUtil}
 import dagr.core.cmdline.Pipelines
 import dagr.core.tasksystem.Pipeline
-import dagr.sopt.{arg, clp}
-import dagr.tasks.DagrDef.{PathPrefix, PathToBam, PathToFasta, PathToIntervals, PathToVcf}
+import dagr.tasks.DagrDef.{PathPrefix, PathToBam, PathToFasta, PathToIntervals}
 import dagr.tasks.fgbio.{ClipOverlappingReads, FilterConsensusReads}
 import dagr.tasks.picard.IntervalListToBed
 import dagr.tasks.vc.VarDictJavaEndToEnd
-import htsjdk.variant.vcf.VCFFileReader
 
 
 @clp(
@@ -49,21 +48,21 @@ import htsjdk.variant.vcf.VCFFileReader
 )
 class PostDuplexConsensusPipeline
 (
-  @arg(flag="i", doc="Path to the input consensus duplex BAM.") val input: PathToBam,
-  @arg(flag="r", doc="Path to the reference FASTA.")            val ref: PathToFasta,
-  @arg(flag="l", doc="Regions to analyze.")                     val intervals: PathToIntervals,
-  @arg(flag="o", doc="Path prefix for output files.")           val output: PathPrefix,
-  @arg(flag="N", doc="Mask (make 'N') consensus bases with quality less than this threshold.")
+  @arg(flag='i', doc="Path to the input consensus duplex BAM.") val input: PathToBam,
+  @arg(flag='r', doc="Path to the reference FASTA.")            val ref: PathToFasta,
+  @arg(flag='l', doc="Regions to analyze.")                     val intervals: PathToIntervals,
+  @arg(flag='o', doc="Path prefix for output files.")           val output: PathPrefix,
+  @arg(flag='N', doc="Mask (make 'N') consensus bases with quality less than this threshold.")
   val minConsensusBaseQuality: Option[Int] = Some(50),
-  @arg(flag="M", minElements=1, maxElements=3, doc="The minimum number of reads supporting a consensus base/read.")
+  @arg(flag='M', minElements=1, maxElements=3, doc="The minimum number of reads supporting a consensus base/read.")
   val minReads: Seq[Int] = Seq(6,3,3),
-  @arg(flag="E", minElements=1, maxElements=3, doc="The maximum raw-read error rate across the entire consensus read.")
+  @arg(flag='E', minElements=1, maxElements=3, doc="The maximum raw-read error rate across the entire consensus read.")
   val maxReadErrorRate: Seq[Double] = Seq(0.05),
-  @arg(flag="e", minElements=1, maxElements=3, doc="The maximum error rate for a single consensus base.")
+  @arg(flag='e', minElements=1, maxElements=3, doc="The maximum error rate for a single consensus base.")
   val maxBaseErrorRate: Seq[Double] = Seq(0.1),
-  @arg(flag="n", doc="Maximum fraction of no-calls in the read after filtering.")
+  @arg(flag='n', doc="Maximum fraction of no-calls in the read after filtering.")
   val maxNoCallFraction: Double = 0.2,
-  @arg(flag="f", doc="The minimum allele frequency for variant calling") val minimumAf: Double = 0.0001
+  @arg(flag='f', doc="The minimum allele frequency for variant calling") val minimumAf: Double = 0.0001
 )
   extends Pipeline(Some(output.getParent)) {
 

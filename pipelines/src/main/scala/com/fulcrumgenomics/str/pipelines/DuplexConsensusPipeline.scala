@@ -25,10 +25,10 @@
 
 package com.fulcrumgenomics.str.pipelines
 
+import com.fulcrumgenomics.sopt.{arg, clp}
 import dagr.commons.io.Io
 import dagr.core.cmdline.Pipelines
 import dagr.core.tasksystem.{Pipeline, ShellCommand}
-import dagr.sopt.{arg, clp}
 import dagr.tasks.DagrDef._
 import dagr.tasks.bwa.Bwa
 import dagr.tasks.fgbio._
@@ -48,25 +48,25 @@ import dagr.tasks.picard._
 )
 class DuplexConsensusPipeline
 (@arg(          doc="Path to the unmapped BAM file.")            val unmappedBam: PathToBam,
- @arg(flag="r", doc="Path to the reference FASTA.")              val ref: PathToFasta,
- @arg(flag="l", doc="Regions to analyze.")                       val intervals: PathToIntervals,
- @arg(flag="o", doc="Path prefix for output files.")             val output: PathPrefix,
- @arg(flag="u", doc="The tag containing the raw UMI.")           val umiTag: String = "RX",
- @arg(flag="m", doc="Minimum mapping quality to include reads.") val minMapQ: Int = 10,
- @arg(flag="x", doc="The allowable number of edits between UMIs.") val edits: Int = 1,
- @arg(flag="1", doc="The Phred-scaled error rate for an error prior to the UMIs being integrated.") val errorRatePreUmi: Option[Int] = Some(45),
- @arg(flag="2", doc="The Phred-scaled error rate for an error post the UMIs have been integrated.") val errorRatePostUmi: Option[Int] = Some(30),
+ @arg(flag='r', doc="Path to the reference FASTA.")              val ref: PathToFasta,
+ @arg(flag='l', doc="Regions to analyze.")                       val intervals: PathToIntervals,
+ @arg(flag='o', doc="Path prefix for output files.")             val output: PathPrefix,
+ @arg(flag='u', doc="The tag containing the raw UMI.")           val umiTag: String = "RX",
+ @arg(flag='m', doc="Minimum mapping quality to include reads.") val minMapQ: Int = 10,
+ @arg(flag='x', doc="The allowable number of edits between UMIs.") val edits: Int = 1,
+ @arg(flag='1', doc="The Phred-scaled error rate for an error prior to the UMIs being integrated.") val errorRatePreUmi: Option[Int] = Some(45),
+ @arg(flag='2', doc="The Phred-scaled error rate for an error post the UMIs have been integrated.") val errorRatePostUmi: Option[Int] = Some(30),
  @arg(          doc="The minimum input base quality for bases to go into consensus.")               val minInputBaseQuality: Option[Int] = Some(20),
- @arg(flag="N", doc="Mask (make 'N') consensus bases with quality less than this threshold.")       val minConsensusBaseQuality: Option[Int] = Some(50),
- @arg(flag="M", minElements=1, maxElements=3, doc="The minimum number of reads supporting a consensus base/read.")
+ @arg(flag='N', doc="Mask (make 'N') consensus bases with quality less than this threshold.")       val minConsensusBaseQuality: Option[Int] = Some(50),
+ @arg(flag='M', minElements=1, maxElements=3, doc="The minimum number of reads supporting a consensus base/read.")
  val minReads: Seq[Int] = Seq(6,3,3),
- @arg(flag="E", minElements=1, maxElements=3, doc="The maximum raw-read error rate across the entire consensus read.")
+ @arg(flag='E', minElements=1, maxElements=3, doc="The maximum raw-read error rate across the entire consensus read.")
  val maxReadErrorRate: Seq[Double] = Seq(0.05),
- @arg(flag="e", minElements=1, maxElements=3, doc="The maximum error rate for a single consensus base.")
+ @arg(flag='e', minElements=1, maxElements=3, doc="The maximum error rate for a single consensus base.")
  val maxBaseErrorRate: Seq[Double] = Seq(0.2),
- @arg(flag="n", doc="Maximum fraction of no-calls in the read after filtering.")
+ @arg(flag='n', doc="Maximum fraction of no-calls in the read after filtering.")
  val maxNoCallFraction: Double = 0.2,
- @arg(flag="f", doc="The minimum allele frequency for variant calling") val minimumAf: Double = 0.0001
+ @arg(flag='f', doc="The minimum allele frequency for variant calling") val minimumAf: Double = 0.0001
 )
   extends Pipeline(Some(output.getParent)) {
 

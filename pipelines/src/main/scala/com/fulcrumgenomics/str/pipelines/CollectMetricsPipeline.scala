@@ -1,9 +1,9 @@
 package com.fulcrumgenomics.str.pipelines
 
+import com.fulcrumgenomics.sopt.{arg, clp}
 import dagr.commons.io.Io
 import dagr.core.cmdline.Pipelines
 import dagr.core.tasksystem.Pipeline
-import dagr.sopt.{arg, clp}
 import dagr.tasks.DagrDef.{PathPrefix, PathToBam, PathToFasta, PathToIntervals}
 import dagr.tasks.picard.{CollectAlignmentSummaryMetrics, CollectHsMetrics, CollectSequencingArtifactMetrics}
 
@@ -18,10 +18,10 @@ import dagr.tasks.picard.{CollectAlignmentSummaryMetrics, CollectHsMetrics, Coll
 )
 class CollectMetricsPipeline
 (
-  @arg(flag="o", doc="Input mapped BAM).") val input: PathToBam,
-  @arg(flag="r", doc="Path to the reference FASTA.")              val ref: PathToFasta,
-  @arg(flag="l", doc="Regions to analyze.")                       val intervals: PathToIntervals,
-  @arg(flag="o", doc="Path prefix for output files.")             val output: PathPrefix
+  @arg(flag='o', doc="Input mapped BAM).") val input: PathToBam,
+  @arg(flag='r', doc="Path to the reference FASTA.")              val ref: PathToFasta,
+  @arg(flag='l', doc="Regions to analyze.")                       val intervals: PathToIntervals,
+  @arg(flag='o', doc="Path prefix for output files.")             val output: PathPrefix
 )
   extends Pipeline(Some(output.getParent)) {
 
