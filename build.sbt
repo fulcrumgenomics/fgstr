@@ -51,18 +51,18 @@ lazy val commonSettings = Seq(
 ////////////////////////////////////////////////////////////////////////////////////////////////
 // tools project
 ////////////////////////////////////////////////////////////////////////////////////////////////
-/*
 lazy val tools = Project(id="fgstr-tools", base=file("tools"))
   .settings(commonSettings: _*)
   .settings(description := "Command line tools for STR duplex sequencing.")
   .settings(
     libraryDependencies ++= Seq(
-      "com.fulcrumgenomics"  %%  "fgbio"      %  "0.1.4-SNAPSHOT",
+      "com.fulcrumgenomics" %% "commons"      % "0.2.0-SNAPSHOT",
+      "com.fulcrumgenomics" %% "sopt"         % "0.2.0-SNAPSHOT",
+      "com.fulcrumgenomics" %% "fgbio"        % "0.2.0-SNAPSHOT",
       //---------- Test libraries -------------------//
       "org.scalatest"        %%  "scalatest"  %  "2.2.4" % "test->*" excludeAll ExclusionRule(organization="org.junit", name="junit")
     )
   )
-  */
 
 ////////////////////////////////////////////////////////////////////////////////////////////////
 // pipeline project
@@ -86,7 +86,7 @@ lazy val pipelines = Project(id="fgstr-pipeline", base=file("pipelines"))
       "com.fulcrumgenomics" %% "dagr"         % dagrVersion excludeAll(htsjdkAndPicardExcludes:_*),
       "com.fulcrumgenomics" %% "fgbio"        % "0.2.0-SNAPSHOT"
     )
-  )//.dependsOn(tools)
+  ).dependsOn(tools)
 
 ////////////////////////////////////////////////////////////////////////////////////////////////
 // root project
@@ -101,5 +101,5 @@ lazy val root = Project(id="fgstr", base=file("."))
   .settings(assemblySettings: _*)
   .aggregate(pipelines)
   .dependsOn(pipelines)
-  //.aggregate(tools, pipelines)
-  //.dependsOn(tools, pipelines)
+  .aggregate(tools, pipelines)
+  .dependsOn(tools, pipelines)
