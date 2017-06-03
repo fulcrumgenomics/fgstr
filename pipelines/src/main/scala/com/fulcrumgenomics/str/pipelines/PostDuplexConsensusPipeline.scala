@@ -84,7 +84,7 @@ class PostDuplexConsensusPipeline
 
     // Make variant calls and assess the results
     val clippedBam      = PathUtil.replaceExtension(input, ".clipped.bam")
-    val clip            = new ClipOverlappingReads(in=input, out=clippedBam, ref=ref).requires(cores=1, memory="8G")
+    val clip            = new ClipOverlappingReads(in=dsFiltered, out=clippedBam, ref=ref).requires(cores=1, memory="8G")
     val metricsPipeline = new CollectMetricsPipeline(input=clippedBam, ref=ref, intervals=intervals, output=output)
 
     // Do some variant calling
