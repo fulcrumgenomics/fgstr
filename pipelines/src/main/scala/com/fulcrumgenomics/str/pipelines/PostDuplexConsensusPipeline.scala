@@ -36,7 +36,7 @@ import dagr.tasks.fgbio.{ClipOverlappingReads, FilterConsensusReads}
 import dagr.tasks.picard.IntervalListToBed
 import dagr.tasks.vc.VarDictJavaEndToEnd
 
-
+@deprecated(message="See the README for more information: https://github.com/fulcrumgenomics/fgstr", since="Jun-7-2017")
 @clp(
   description =
     """

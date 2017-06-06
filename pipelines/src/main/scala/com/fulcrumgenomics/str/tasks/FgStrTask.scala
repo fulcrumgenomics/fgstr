@@ -27,10 +27,12 @@ package com.fulcrumgenomics.str.tasks
 
 import java.nio.file.Path
 
+import dagr.core.config.Configuration
 import dagr.core.execsystem.{Cores, Memory}
-import dagr.tasks.picard.PicardTask
-import htsjdk.samtools.ValidationStringency
+import dagr.core.tasksystem.{FixedResources, ProcessTask}
+import dagr.tasks.JarTask
 
+import scala.collection.mutable
 import scala.collection.mutable.ListBuffer
 
 object FgStrTask {
@@ -39,31 +41,35 @@ object FgStrTask {
 }
 
 /**
-  * Abstract base task that should be extended for any tool in the fgstr-tools toolset.
+  * Base Task for any task in the fgstr-tools jar.
+  *
+  * @param compressionLevel the compress level to use for HTSJDK.
   */
-abstract class FgStrTask(useAdvancedGcOptions: Boolean = true,
-                         validationStringency: Option[ValidationStringency] = Some(ValidationStringency.LENIENT),
-                         useAsyncIo: Boolean = false,
-                         compressionLevel: Option[Int] = None,
-                         createIndex: Option[Boolean] = Some(true),
-                         createMd5File: Option[Boolean] = None)
-  extends PicardTask(
-    useAdvancedGcOptions = useAdvancedGcOptions,
-    validationStringency = validationStringency,
-    useAsyncIo           = useAsyncIo,
-    compressionLevel     = compressionLevel,
-    createIndex          = createIndex,
-    createMd5File        = createMd5File) {
-
-  // Default resource requirements
+abstract class FgStrTask(var compressionLevel: Option[Int] = None)
+  extends ProcessTask with JarTask with FixedResources with Configuration {
   requires(Cores(1), Memory("4G"))
 
-  /** Override to return the path to the fgstr-tools jar. */
-  override def jarPath: Path = configure[Path](FgStrTask.FgStrJarConfigPath)
+  /** Looks up the first super class that does not have "\$anon\$" in its name. */
+  lazy val commandName: String = JarTask.findCommandName(getClass, Some("FgStrTask"))
 
-  /** Override to "hide" the addPicardArgs being addFgStrArgs. */
-  final override protected def addPicardArgs(buffer: ListBuffer[Any]): Unit = addFgStrArgs(buffer)
+  name = commandName
 
-  /** To be implemented by sub-classes to add arguments to the command line. */
+  override final def args: Seq[Any] = {
+    val buffer = ListBuffer[Any]()
+    val jvmProps = mutable.Map[String,String]()
+    compressionLevel.foreach(c => jvmProps("samjdk.compression_level") = c.toString)
+    buffer.appendAll(jarArgs(this.fgStrJar, jvmProperties=jvmProps, jvmMemory=this.resources.memory))
+    buffer += commandName
+    addFgStrArgs(buffer)
+    buffer
+  }
+
+  /** Can be overridden to use a specific FgStr Tools jar. */
+  protected def fgStrJar: Path = configure[Path](FgStrTask.FgStrJarConfigPath)
+
+  /** Implement this to add the tool-specific arguments */
   protected def addFgStrArgs(buffer: ListBuffer[Any]): Unit
+
+  /** Sets the compression level to a specific value. */
+  def withCompression(i: Int) : this.type = { this.compressionLevel = Some(i); this }
 }
