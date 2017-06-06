@@ -1,7 +1,7 @@
 package com.fulcrumgenomics.str.pipelines
 
 import com.fulcrumgenomics.sopt.{arg, clp}
-import dagr.commons.io.Io
+import com.fulcrumgenomics.commons.io.Io
 import dagr.core.cmdline.Pipelines
 import dagr.core.tasksystem.Pipeline
 import dagr.tasks.DagrDef.{PathPrefix, PathToBam, PathToFasta, PathToIntervals}

@@ -31,7 +31,7 @@ import com.fulcrumgenomics.FgBioDef._
 import com.fulcrumgenomics.sopt.{arg, clp}
 import com.fulcrumgenomics.str.tasks.FgStrTask
 import com.fulcrumgenomics.umi.ConsensusTags
-import dagr.commons.io.Io
+import com.fulcrumgenomics.commons.io.Io
 import dagr.core.cmdline.Pipelines
 import dagr.core.config.Configuration
 import dagr.core.tasksystem.{Pipeline, ProcessTask}

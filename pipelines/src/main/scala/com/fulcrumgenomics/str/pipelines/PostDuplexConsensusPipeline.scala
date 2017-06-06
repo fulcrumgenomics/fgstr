@@ -28,7 +28,7 @@ package com.fulcrumgenomics.str.pipelines
 import java.nio.file.Files
 
 import com.fulcrumgenomics.sopt.{arg, clp}
-import dagr.commons.io.{Io, PathUtil}
+import com.fulcrumgenomics.commons.io.{Io, PathUtil}
 import dagr.core.cmdline.Pipelines
 import dagr.core.tasksystem.Pipeline
 import dagr.tasks.DagrDef.{PathPrefix, PathToBam, PathToFasta, PathToIntervals}

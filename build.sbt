@@ -2,7 +2,7 @@ import com.typesafe.sbt.SbtGit.GitCommand
 import sbt.Keys._
 import sbt._
 import sbtassembly.AssemblyKeys.assembly
-import scoverage.ScoverageSbtPlugin.ScoverageKeys._
+import scoverage.ScoverageKeys._
 
 ////////////////////////////////////////////////////////////////////////////////////////////////
 // For the aggregate (root) jar, override the name.  For the sub-projects,
@@ -31,7 +31,7 @@ lazy val commonSettings = Seq(
   organizationHomepage := Some(url("http://www.fulcrumgenomics.com")),
   homepage             := Some(url("http://github.com/fulcrumgenomics/fgstr")),
   startYear            := Some(2017),
-  scalaVersion         := "2.11.11",
+  scalaVersion         := "2.12.2",
   scalacOptions        += "-target:jvm-1.8",
   scalacOptions in (Compile, doc) ++= docScalacOptions,
   scalacOptions in (Test, doc) ++= docScalacOptions,
@@ -60,7 +60,7 @@ lazy val tools = Project(id="fgstr-tools", base=file("tools"))
       "com.fulcrumgenomics" %% "sopt"         % "0.2.0-SNAPSHOT",
       "com.fulcrumgenomics" %% "fgbio"        % "0.2.0-SNAPSHOT",
       //---------- Test libraries -------------------//
-      "org.scalatest"        %%  "scalatest"  %  "2.2.4" % "test->*" excludeAll ExclusionRule(organization="org.junit", name="junit")
+      "org.scalatest"        %%  "scalatest"  %  "3.0.1" % "test->*" excludeAll ExclusionRule(organization="org.junit", name="junit")
     )
   )
 
