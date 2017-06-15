@@ -41,8 +41,10 @@ The name field should contain a comma list of values as follows:
   3. the name of the STR (ex. `D1S1656`)
  
 Optionally, two extra values can be appended:
+
   4. optionally, the expected (known or truth) number of repeat units for allele #1
   5. optionally, the expected (known or truth) number of repeat units for allele #2
+  
 An example name field with the optionals is `4,17,D1S1656,9,10` and without is `4,17,D1S1656`.
 
 For example, below is an interval list with (1) the header (sequence dictionary) omitted, and (2) dummy values for the expected/known/truth number of repeat units:
