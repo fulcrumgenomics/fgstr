@@ -1,3 +1,8 @@
+[![Build Status](https://travis-ci.org/fulcrumgenomics/fgstr.svg?branch=devel)](https://travis-ci.org/fulcrumgenomics/fgstr)
+[![codecov](https://codecov.io/gh/fulcrumgenomics/fgstr/branch/devel/graph/badge.svg)](https://codecov.io/gh/fulcrumgenomics/fgstr)
+[![Codacy Badge](https://api.codacy.com/project/badge/Grade/ff514740e09f4ed0a62fbff805a2de59)](https://www.codacy.com/app/nilshomer/fgstr?utm_source=github.com&amp;utm_medium=referral&amp;utm_content=fulcrumgenomics/fgstr&amp;utm_campaign=Badge_Grade)[![License](http://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/fulcrumgenomics/fgstr/blob/devel/LICENSE)
+[![Language](http://img.shields.io/badge/language-scala-brightgreen.svg)](http://www.scala-lang.org/)
+
 # fgstr
 
 Simple Tandem Repeat Genotyping for Duplex Sequencing
