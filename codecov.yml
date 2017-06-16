@@ -1,0 +1,11 @@
+coverage:
+  ignore:
+  - com/fulcrumgenomics/str/pipelines/.*
+  - com/fulcrumgenomics/str/tasks/.*
+  status:
+    patch:
+      default:
+        target: '80'
+    project:
+      default:
+        target: auto
