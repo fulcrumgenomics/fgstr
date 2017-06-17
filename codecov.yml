@@ -1,5 +1,4 @@
 coverage:
-  branch: devel
   ignore:
   - .*com/fulcrumgenomics/str/pipelines/.*
   - .*com/fulcrumgenomics/str/tasks/.*
