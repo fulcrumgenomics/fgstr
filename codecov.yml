@@ -2,6 +2,7 @@ coverage:
   ignore:
   - .*com/fulcrumgenomics/str/pipelines/.*
   - .*com/fulcrumgenomics/str/tasks/.*
+  - .*com/fulcrumgenomics/str/cmdline/FgStrMain.scala
   status:
     patch:
       default:
