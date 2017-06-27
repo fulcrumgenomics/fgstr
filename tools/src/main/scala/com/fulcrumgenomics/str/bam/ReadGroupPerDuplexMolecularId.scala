@@ -26,7 +26,7 @@ package com.fulcrumgenomics.str.bam
 
 import com.fulcrumgenomics.FgBioDef._
 import com.fulcrumgenomics.bam.Bams
-import com.fulcrumgenomics.bam.api.{SamRecord, SamSource, SamWriter}
+import com.fulcrumgenomics.bam.api.{SamOrder, SamRecord, SamSource, SamWriter}
 import com.fulcrumgenomics.cmdline.ClpGroups
 import com.fulcrumgenomics.commons.CommonsDef.IteratorToJavaCollectionsAdapter
 import com.fulcrumgenomics.commons.io.Io
@@ -45,6 +45,8 @@ import scala.collection.mutable
 @clp(group=ClpGroups.VcfOrBcf, description=
   """
     |Creates a BAM file with a read group per duplex molecule ID.
+    |
+    |The output will be coordinate sorted.
     |
     |The raw reads should have been grouped using fgbio's GroupReadsByUmi.
     |
@@ -78,7 +80,8 @@ class ReadGroupPerDuplexMolecularId
   @arg(flag='M', minElements=1, maxElements=3, doc="The minimum number of raw reads per source molecule.")
   val minReads: Seq[Int] = Seq(1),
   @arg(flag='T', doc="The output tag from UMI grouping.") val assignTag: String = ConsensusTags.MolecularId,
-  @arg(flag='s', doc="Create a read group per-strand of a duplex molecule") val perStrand: Boolean = false
+  @arg(flag='s', doc="Create a read group per-strand of a duplex molecule") val perStrand: Boolean = false,
+  @arg(flag='S', doc="The sort order of the output") val samOrder: Option[SamOrder] = None
 ) extends FgStrTool with LazyLogging {
 
   Io.assertReadable(input)
@@ -116,8 +119,8 @@ class ReadGroupPerDuplexMolecularId
       logger.info("Writing to output")
       val in       = SamSource(input, ref=ref)
       val iterator = new DuplexMoleculeFilteringIterator(toIterator(in), filters, assignTag)
-      val header   = toOutputHeader(in, mids)
-      val out      = SamWriter(output, header, ref=ref)
+      val header   = toOutputHeader(in, mids, samOrder)
+      val out      = SamWriter(output, header, ref=ref, sort=samOrder)
 
       if (mids.nonEmpty) {
         iterator.foreach { rec =>
@@ -131,7 +134,7 @@ class ReadGroupPerDuplexMolecularId
   }
 
   /** Create the output header. */
-  private def toOutputHeader(in: SamSource, mids: Seq[String]): SAMFileHeader = {
+  private def toOutputHeader(in: SamSource, mids: Seq[String], sortOrder: Option[SamOrder]): SAMFileHeader = {
     val header = in.header.clone()
 
     val groupsOfReadGroups: Seq[Seq[SAMReadGroupRecord]] = header.getReadGroups
@@ -177,6 +180,7 @@ class ReadGroupPerDuplexMolecularId
     }
 
     header.setReadGroups(readGroups.toIterator.toJavaList)
+    sortOrder.foreach(_.applyTo(header))
     header
   }
 

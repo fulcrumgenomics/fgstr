@@ -26,6 +26,7 @@
 package com.fulcrumgenomics.str.tasks
 
 import com.fulcrumgenomics.FgBioDef.{PathToBam, PathToFasta}
+import com.fulcrumgenomics.bam.api.SamOrder
 import dagr.tasks.DagrDef.PathToIntervals
 
 import scala.collection.mutable.ListBuffer
@@ -35,7 +36,8 @@ class ReadGroupPerDuplexMolecularId(input: PathToBam,
                                     ref: Option[PathToFasta] = None,
                                     intervals: Option[PathToIntervals] = None,
                                     minReads: Seq[Int] = Seq(1),
-                                    perStrand: Boolean = false)
+                                    perStrand: Boolean = false,
+                                    samOrder: Option[SamOrder] = Some(SamOrder.Coordinate))
   extends FgStrTask {
 
   protected def addFgStrArgs(buffer: ListBuffer[Any]): Unit = {
@@ -45,5 +47,6 @@ class ReadGroupPerDuplexMolecularId(input: PathToBam,
     intervals.foreach(l => buffer.append("-l", l))
     buffer.append("-M"); buffer.append(minReads:_*)
     buffer.append("-s", perStrand)
+    samOrder.foreach(s => buffer.append("-S", s))
   }
 }

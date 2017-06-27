@@ -27,6 +27,7 @@ package com.fulcrumgenomics.str.pipelines
 
 import java.nio.file.Files
 
+import com.fulcrumgenomics.bam.api.SamOrder
 import com.fulcrumgenomics.commons.CommonsDef._
 import com.fulcrumgenomics.commons.io.{Io, PathUtil}
 import com.fulcrumgenomics.sopt.{arg, clp}
