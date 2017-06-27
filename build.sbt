@@ -56,9 +56,9 @@ lazy val tools = Project(id="fgstr-tools", base=file("tools"))
   .settings(description := "Command line tools for STR duplex sequencing.")
   .settings(
     libraryDependencies ++= Seq(
-      "com.fulcrumgenomics" %% "commons"      % "0.2.0-SNAPSHOT",
-      "com.fulcrumgenomics" %% "sopt"         % "0.2.0-SNAPSHOT",
-      "com.fulcrumgenomics" %% "fgbio"        % "0.2.0-SNAPSHOT",
+      "com.fulcrumgenomics" %% "commons"      % "0.2.0",
+      "com.fulcrumgenomics" %% "sopt"         % "0.2.0",
+      "com.fulcrumgenomics" %% "fgbio"        % "0.2.0",
       //---------- Test libraries -------------------//
       "org.scalatest"        %%  "scalatest"  %  "3.0.1" % "test->*" excludeAll ExclusionRule(organization="org.junit", name="junit")
     )
@@ -74,17 +74,17 @@ lazy val htsjdkAndPicardExcludes = Seq(
   ExclusionRule(organization="com.google.cloud.genomics")
 )
 
-val dagrVersion = "0.2.0-SNAPSHOT"
+val dagrVersion = "0.2.0"
 
 lazy val pipelines = Project(id="fgstr-pipeline", base=file("pipelines"))
   .settings(description := "dagr pipelines for processing STR duplex sequencing data.")
   .settings(commonSettings: _*)
   .settings(
     libraryDependencies ++= Seq(
-      "com.fulcrumgenomics" %% "commons"      % "0.2.0-SNAPSHOT",
-      "com.fulcrumgenomics" %% "sopt"         % "0.2.0-SNAPSHOT",
+      "com.fulcrumgenomics" %% "commons"      % "0.2.0",
+      "com.fulcrumgenomics" %% "sopt"         % "0.2.0",
       "com.fulcrumgenomics" %% "dagr"         % dagrVersion excludeAll(htsjdkAndPicardExcludes:_*),
-      "com.fulcrumgenomics" %% "fgbio"        % "0.2.0-SNAPSHOT"
+      "com.fulcrumgenomics" %% "fgbio"        % "0.2.0"
     )
   ).dependsOn(tools)
 
