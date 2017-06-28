@@ -194,17 +194,19 @@ class StrGenotypeDuplexMolecules
             StrAllele(allele=allele, repeatLength=repeatLength, count=count)
           }.sortBy(-_.count)
 
+          // naively choose the two most frequent genotypes
           val genotypeCalls = {
-            def maf(call1: StrAllele, call2: StrAllele): Double = call2.count / (call1.count + call2.count).toDouble
             allCalls.take(2) match {
-              case Seq(call)        =>
+              case Seq()             =>
+                val noCall = StrAllele(Allele.NO_CALL, 0, 0)
+                Seq(noCall, noCall)
+              case Seq(call)         =>
                 Seq(call, call)
               case Seq(call1, call2) =>
-                if (maf(call1, call2) < minimumMaf) Seq(call1, call1) else Seq(call1, call2)
+                val maf: Double = call2.count / (call1.count + call2.count).toDouble
+                if (maf < minimumMaf) Seq(call1, call1) else Seq(call1, call2)
             }
           }
-
-          // naively choose the two most frequent genotypes
           val genotypeBuilder = new GenotypeBuilder(sampleName, genotypeCalls.map(_.allele).toIterator.toJavaList)
 
           addFormatFields(

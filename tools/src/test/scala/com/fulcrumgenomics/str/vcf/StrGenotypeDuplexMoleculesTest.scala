@@ -363,5 +363,25 @@ class StrGenotypeDuplexMoleculesTest extends UnitSpec {
     getStrGenotype(genotype) should contain theSameElementsInOrderAs Seq(1.0, 3.0)
   }
 
+  it should "write no-calls when there are no counts for the STR" in {
+    val builder = new VariantContextSetBuilder(sampleNames=Seq.range(1, 7).map(i => s"S-$i"))
+    val alleles = List("AAA", "AAAAAA", "AAAAAAAAA")
+
+    // all no-calls
+    Seq.range(1, 7).foreach { i =>
+      builder.addVariant(refIdx=0, start=1, variantAlleles=alleles, genotypeAlleles=List.empty, sampleName=Some(s"S-$i"))
+    }
+
+    val outputs  = run(builder, minimumMaf=0.0)
+    val variants = outputs.variants
+
+    variants.length shouldBe 1
+    variants.head.getGenotypes.length shouldBe 1
+    val genotype = variants.head.getGenotype(0)
+    genotype.isNoCall shouldBe true
+    genotype.getAlleles.map(_.getBaseString).toSeq should contain theSameElementsAs List(Allele.NO_CALL_STRING, Allele.NO_CALL_STRING)
+    getStrGenotype(genotype) should contain theSameElementsInOrderAs Seq(0.0, 0.0)
+  }
+
   // TODO: add a test for aggregating genotype fields DP, GB, PDP, DSTUTTER, DFLANKINDEL from HipSTR
 }
