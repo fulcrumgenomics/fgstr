@@ -26,7 +26,7 @@
 package com.fulcrumgenomics.str.vcf
 
 import com.fulcrumgenomics.commons.io.{Io, PathUtil}
-import com.fulcrumgenomics.str.vcf.StrGenotypeDuplexMolecules.StrAllele
+import com.fulcrumgenomics.str.vcf.StrInterval.StrAllele
 import com.fulcrumgenomics.testing.{UnitSpec, VariantContextSetBuilder}
 import htsjdk.samtools.util.{Interval, IntervalList}
 import htsjdk.variant.variantcontext.{Allele, Genotype, VariantContext}

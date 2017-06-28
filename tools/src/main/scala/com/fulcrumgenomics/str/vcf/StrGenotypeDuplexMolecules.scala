@@ -33,7 +33,7 @@ import com.fulcrumgenomics.commons.io.{Io, PathUtil}
 import com.fulcrumgenomics.commons.util.LazyLogging
 import com.fulcrumgenomics.sopt.{arg, clp}
 import com.fulcrumgenomics.str.cmdline.FgStrTool
-import com.fulcrumgenomics.str.vcf.StrGenotypeDuplexMolecules.StrAllele
+import com.fulcrumgenomics.str.vcf.StrInterval._
 import com.fulcrumgenomics.util.{ProgressLogger, Rscript}
 import htsjdk.samtools.SAMSequenceDictionary
 import htsjdk.samtools.reference.ReferenceSequenceFileWalker
@@ -44,52 +44,6 @@ import htsjdk.variant.vcf._
 
 import scala.collection.mutable.ListBuffer
 import scala.util.Failure
-
-object StrGenotypeDuplexMolecules {
-  private [vcf] object StrAllele {
-    val NoCall: StrAllele = StrAllele(Allele.NO_CALL, 0, 0)
-  }
-
-  /** A single STR allele, including the number of repeats and count */
-  private[vcf] case class StrAllele(allele: Allele, repeatLength: Int, count: Int) {
-    def toGenotype(unitLength: Int): String = {
-      if (Allele.NO_CALL == allele) {
-        "0"
-      }
-      else if (repeatLength % unitLength == 0) {
-        f"${repeatLength / unitLength}%d"
-      }
-      else {
-        f"${repeatLength / unitLength.toDouble}%.2f"
-      }
-    }
-  }
-
-  /** Contains information about a known STR */
-  private[vcf] case class StrInterval(chrom: String,
-                                      start: Int,
-                                      end: Int,
-                                      unitLength: Int,
-                                      refLength: Int,
-                                      name: String,
-                                      known1: Option[String] = None,
-                                      known2: Option[String] = None)
-    extends Interval(chrom, start, end, true, name) {
-    override def toString: String  = productIterator.flatMap {
-      case x: Option[_] => x
-      case x            => Some(x)
-    }.mkString("\t")
-
-    /** Outputs a formatted string with the given set of (called) alleles */
-    def toLongString(alleles: Seq[StrAllele]): String = {
-      val genotypes = alleles.map { case allele =>
-        val genotype = allele.toGenotype(this.unitLength)
-        s"$genotype:${allele.count}"
-      }.mkString(",")
-      s"$this\t$genotypes"
-    }
-  }
-}
 
 @clp(group=ClpGroups.VcfOrBcf, description=
   """
@@ -146,7 +100,6 @@ class StrGenotypeDuplexMolecules
   @arg(flag='m', doc="Minimum minor allele frequency to call a heterozygous genotype") val minimumMaf: Double = 0.2,
   private val skipPlots: Boolean = false // for not plotting in tests
 ) extends FgStrTool with LazyLogging {
-  import StrGenotypeDuplexMolecules.StrInterval
 
   private val ScriptPath = "com/fulcrumgenomics/str/vcf/StrGenotypeDuplexMolecules.R"
 
@@ -158,7 +111,7 @@ class StrGenotypeDuplexMolecules
     def f(ext: String): FilePath = PathUtil.pathTo(output + ext)
 
     val vcfIn        = new VCFFileReader(input.toFile, false)
-    val strIntervals = loadIntervals()
+    val strIntervals = StrInterval.loadIntervals(this.intervals)
     val ref          = new ReferenceSequenceFileWalker(this.ref.toFile)
     val dict         = ref.getSequenceDictionary
     val vcfOut       = toVcfWriter(header=vcfIn.getFileHeader, sampleName=sampleName, dict=dict, output=f(".vcf.gz"))
@@ -183,16 +136,10 @@ class StrGenotypeDuplexMolecules
 
           // get the count per allele
           val counts: Seq[Int] =  alleles.map { allele => genotypes.map { genotype => genotype.countAllele(allele) }.sum }
+          val totalCounts: Int = counts.sum
 
           // get the new genotype
-          val refAlleleLength = ctx.getReference.length()
-          val allCalls = alleles.zip(counts)
-            .filter(_._2 > 0) // ignore zero counts
-            .map { case (allele, count) =>
-            val baseDiff     = allele.length() - refAlleleLength
-            val repeatLength = baseDiff + (str.refLength * str.unitLength)
-            StrAllele(allele=allele, repeatLength=repeatLength, count=count)
-          }.sortBy(-_.count)
+          val allCalls = StrAllele.toCalls(str, ctx, counts)
 
           // naively choose the two most frequent genotypes
           val genotypeCalls = {
@@ -203,7 +150,8 @@ class StrGenotypeDuplexMolecules
               case Seq(call)         =>
                 Seq(call, call)
               case Seq(call1, call2) =>
-                val maf: Double = call2.count / (call1.count + call2.count).toDouble
+                //val maf: Double = call2.count / (call1.count + call2.count).toDouble
+                val maf: Double = call2.count / totalCounts.toDouble
                 if (maf < minimumMaf) Seq(call1, call1) else Seq(call1, call2)
             }
           }
@@ -379,31 +327,6 @@ class StrGenotypeDuplexMolecules
       case Nil         => fail("No sample names found!")
       case name :: Nil => name
       case names       => fail(s"More than one sample name found: ${names.mkString(", ")}")
-    }
-  }
-
-  /** Reads in the interval list with extra STR info. */
-  private def loadIntervals(): Iterator[StrInterval] = {
-    val intervals = IntervalList.fromFile(this.intervals.toFile)
-    intervals.map { interval =>
-      val strInfo = StrInterval(
-        chrom      = interval.getContig,
-        start      = interval.getStart,
-        end        = interval.getEnd,
-        // these will be set below
-        unitLength = 0,
-        refLength  = 0,
-        name       = ""
-      )
-
-      interval.getName.split(',').toSeq match {
-        case Seq(unitLength, refLength, name) =>
-          strInfo.copy(unitLength=unitLength.toInt, refLength=refLength.toInt, name=name)
-        case Seq(unitLength, refLength, name, known1, known2) =>
-          strInfo.copy(unitLength=unitLength.toInt, refLength=refLength.toInt, name=name, known1=Some(known1), known2=Some(known2))
-        case _ =>
-          throw new IllegalArgumentException(s"Interval name improperly formatted for interval: $interval")
-      }
     }
   }
 }
