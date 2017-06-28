@@ -158,6 +158,9 @@ private class GenotypeStr
     val stutter   = f(".stutter.txt")
     val intervals = f(".interval_list")
 
+    // for HipSTR
+    val useUnpaired = true // since we may extract only one end of a pair
+
     val toIntervals    = new SimpleInJvmTask {
       name = "WriteStrInterval"
       override def run(): Unit = intervalList.write(intervals.toFile)
@@ -172,13 +175,13 @@ private class GenotypeStr
 
       // apply the stutter model when calling reads from the same strand of the duplex source molecule
       val toStrandRgBam  = new ReadGroupPerDuplexMolecularId(input=input, output=strandBam, ref=Some(ref), intervals=Some(intervals), minReads=minReads, perStrand=true)
-      val toHipstrVcf    = new HipStr(input=strandBam, ref=ref, regions=bed, output=hipStrVcf, stutterIn=Some(stutter), haploidChromosomes=Some(intervalList))
+      val toHipstrVcf    = new HipStr(input=strandBam, ref=ref, regions=bed, output=hipStrVcf, stutterIn=Some(stutter), haploidChromosomes=Some(intervalList), useUnpaired=useUnpaired)
 
       toIntervals ==> (((toBed :: toDuplexRgBam) ==> toStutterModel) :: toStrandRgBam) ==> toHipstrVcf
     }
     else {
       val toRgBam     = new ReadGroupPerDuplexMolecularId(input=input, output=midBam, ref=Some(ref), intervals=Some(intervals), minReads=minReads)
-      val toHipstrVcf = new HipStr(input=midBam, ref=ref, regions=bed, output=hipStrVcf, haploidChromosomes=Some(intervalList))
+      val toHipstrVcf = new HipStr(input=midBam, ref=ref, regions=bed, output=hipStrVcf, haploidChromosomes=Some(intervalList), useUnpaired=useUnpaired)
       toIntervals ==> (toBed :: toRgBam) ==> toHipstrVcf
     }
 
