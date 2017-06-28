@@ -48,11 +48,17 @@ lazy val commonSettings = Seq(
   updateOptions        := updateOptions.value.withCachedResolution(true)
 ) ++ Defaults.coreDefaultSettings
 
+lazy val assemblySettings = Seq(
+  test in assembly     := {},
+  logLevel in assembly := Level.Info
+)
+
 ////////////////////////////////////////////////////////////////////////////////////////////////
 // tools project
 ////////////////////////////////////////////////////////////////////////////////////////////////
 lazy val tools = Project(id="fgstr-tools", base=file("tools"))
   .settings(commonSettings: _*)
+  .settings(assemblySettings: _*)
   .settings(description := "Command line tools for STR duplex sequencing.")
   .settings(
     libraryDependencies ++= Seq(
@@ -79,6 +85,7 @@ val dagrVersion = "0.2.0"
 lazy val pipelines = Project(id="fgstr-pipeline", base=file("pipelines"))
   .settings(description := "dagr pipelines for processing STR duplex sequencing data.")
   .settings(commonSettings: _*)
+  .settings(assemblySettings: _*)
   .settings(
     libraryDependencies ++= Seq(
       "com.fulcrumgenomics" %% "commons"      % "0.2.0",
@@ -91,11 +98,6 @@ lazy val pipelines = Project(id="fgstr-pipeline", base=file("pipelines"))
 ////////////////////////////////////////////////////////////////////////////////////////////////
 // root project
 ////////////////////////////////////////////////////////////////////////////////////////////////
-lazy val assemblySettings = Seq(
-  test in assembly     := {},
-  logLevel in assembly := Level.Info
-)
-
 lazy val root = Project(id="fgstr", base=file("."))
   .settings(commonSettings: _*)
   .settings(assemblySettings: _*)
