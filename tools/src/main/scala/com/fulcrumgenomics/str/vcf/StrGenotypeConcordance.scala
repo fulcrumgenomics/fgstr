@@ -114,6 +114,8 @@ class StrGenotypeConcordance
   @arg(flag='l', doc="Interval list with the STR regions and known calls.") val intervals: PathToIntervals,
   @arg(flag='o', doc="Prefix for all output files.") val output: PathPrefix,
   @arg(flag='m', doc="Maximum repeat distance to consider two calls the same") val maxDistance: Double = 0,
+  @arg(          doc="Use the STR_GT field to get the STR genotype") val useStrGt: Boolean = true,
+  @arg(          doc="Calculate stutter counts only at concordant sites") val requireConcordanceForStutter: Boolean = true,
   private val skipPlots: Boolean = false // for not plotting in tests
 ) extends FgStrTool with LazyLogging {
   import com.fulcrumgenomics.str.vcf.StrGenotypeConcordance.ConcordanceType._
@@ -130,7 +132,7 @@ class StrGenotypeConcordance
     x.find { y => Math.abs(y) == min }.get
   }
 
-  private def count(str: StrInterval, call: Float, known: Float): ConcordanceType = {
+  private def count(str: StrInterval, call: Double, known: Double): ConcordanceType = {
     if (Math.abs(known - call) <= maxDistance) {
       if (Math.abs(str.refLength - call) <= maxDistance) TrueNegative else TruePositive
     }
@@ -175,32 +177,53 @@ class StrGenotypeConcordance
       vcfIn.query(str.chrom, str.start, str.end)
         .filter(_.getNoCallCount == 0)
         .foreach { ctx =>
-          val strGenotype = ctx.getGenotype(0).getAnyAttribute("STR_GT").toString
-          val (call1, call2) = strGenotype.split(',').map(_.toFloat).toSeq match {
-            case Seq(a, b) => if (a <= b) (a, b) else (b, a)
-            case _         => throw new IllegalArgumentException(s"Could not parse STR_GT FORMAT field: '$strGenotype'")
-          }
-
-          val calls = Seq(call1, call2)
-          val concordances = calls.zip(knowns).map { case (call, known) => count(str, call, known) }
-          concordances.foreach { c => alleleConcordanceCounter.count(c) }
-
-          logConcordance(str, known1, known2, call1, call2, concordances)
-
-          // Update the stutter counts
+          // Get all calls seen, not just the one genotyped
           val counts = {
             val refCount   = ctx.getAttributeAsInt("REFAC", 0)
             val altCounts = ctx.getAttributeAsIntList("AC", 0).map(_.toInt).toSeq
             refCount +: altCounts
           }
           val allCalls = StrAllele.toCalls(str, ctx, counts) // TODO: use this for stutter model
+
+          // Get the genotype calls
+          val (call1: Double, call2: Double) = if (useStrGt) {
+            val strGenotype = ctx.getGenotype(0).getAnyAttribute("STR_GT").toString
+            strGenotype.split(',').map(_.toDouble).toSeq match {
+              case Seq(a, b) => if (a <= b) (a, b) else (b, a)
+              case _         => throw new IllegalArgumentException(s"Could not parse STR_GT FORMAT field: '$strGenotype'")
+            }
+          }
+          else {
+            val a = allCalls.head.repeatLength / str.unitLength.toDouble
+            if (ctx.getGenotype(0).isHom) {
+              (a, a)
+            }
+            else {
+              val b = allCalls.drop(1).head.repeatLength / str.unitLength.toDouble
+              if (a <= b) (a, b) else (b, a)
+            }
+          }
+          require(call1 <= call2)
+
+          // Update the concordance counts
+          val calls = Seq(call1, call2)
+          val concordances = calls.zip(knowns).map { case (call, known) => count(str, call, known) }
+          concordances.foreach { c => alleleConcordanceCounter.count(c) }
+          logConcordance(str, known1, known2, call1, call2, concordances)
+
+          // Update the stutter counts
           val confidentSite = Math.abs(known1 - known2) >= minStutterDistance || known1 == known2
+          val concordant = concordances.forall { c => c == TruePositive || c == TrueNegative }
           allCalls.foreach { call =>
             val callLength = call.repeatLength / str.unitLength.toDouble
-            val stutter = Math.ceil(minAbs(callLength - known1, callLength - known2)).toInt
-            logger.info(f"    Call [$callLength%.2f] Stutter [$stutter] Coverage [${call.count}] Confident-Site [$confidentSite]")
-            stutterCounter.count(stutter, call.count)
-            if (confidentSite) stutterConfidentCounter.count(stutter, call.count)
+            val stutter = {
+              val abs = minAbs(callLength - known1, callLength - known2)
+              if (abs < 0) Math.ceil(abs) else Math.floor(abs)
+            }.toInt
+            if (!requireConcordanceForStutter || concordant) {
+              stutterCounter.count(stutter, call.count)
+              if (confidentSite) stutterConfidentCounter.count(stutter, call.count)
+            }
           }
           logger.info("")
 
