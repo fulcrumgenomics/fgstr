@@ -26,21 +26,30 @@ package com.fulcrumgenomics.str.vcf
 
 import com.fulcrumgenomics.FgBioDef._
 import com.fulcrumgenomics.commons.CommonsDef.PathToIntervals
+import com.fulcrumgenomics.commons.util.LazyLogging
 import com.fulcrumgenomics.str.vcf.StrInterval.StrAllele
 import htsjdk.samtools.util.{Interval, IntervalList}
 import htsjdk.variant.variantcontext.{Allele, VariantContext}
 
 object StrInterval {
-  object StrAllele {
+  object StrAllele extends LazyLogging {
     val NoCall: StrAllele = StrAllele(Allele.NO_CALL, 0, 0)
 
     def toCalls(str: StrInterval, ctx: VariantContext, counts: Seq[Int]): Seq[StrAllele] = {
       val alleles = ctx.getAlleles.toSeq
       require(alleles.length == counts.length, s"# of alleles '${alleles.length}' and # of counts '${counts.length}' did not match")
       val refAlleleLength = ctx.getReference.length()
+
+      if (str.unitLength * str.refLength != refAlleleLength) {
+        logger.warning(s"Mismatch between reference repeat length in the interval list '${str.unitLength * str.refLength}' and vcf '$refAlleleLength' length")
+      }
+
       alleles.zip(counts)
         .filter(_._2 > 0) // ignore zero counts
         .map { case (allele, count) =>
+        // NB: the VCF's reference allele may not have the same length as the STR "reference" length, so we calculate the #
+        // of bases different between the VCF's reference allele and this allele, then add that to the STR "reference"
+        // length found in the interval list (unit-length times ref-length).
         val baseDiff     = allele.length() - refAlleleLength
         val repeatLength = baseDiff + (str.refLength * str.unitLength)
         StrAllele(allele=allele, repeatLength=repeatLength, count=count)
@@ -105,7 +114,7 @@ case class StrInterval(chrom: String,
 
   /** Outputs a formatted string with the given set of (called) alleles */
   def toLongString(alleles: Seq[StrAllele]): String = {
-    val genotypes = alleles.map { case allele =>
+    val genotypes = alleles.map { allele =>
       val genotype = allele.toGenotype(this.unitLength)
       s"$genotype:${allele.count}"
     }.mkString(",")
