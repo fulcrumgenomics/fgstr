@@ -101,7 +101,9 @@ class GenotypeFromGroupedBam
     Io.assertCanWriteFile(output)
     tmp.foreach(Io.assertListable)
 
-     def toStrName(intervalList: IntervalList): String = {
+    val vcf = PathUtil.pathTo(this.output + ".vcf.gz")
+
+    def toStrName(intervalList: IntervalList): String = {
       require(intervalList.length == 1, s"Expected one STR interval, found ${intervalList.length}")
       val interval = intervalList.iterator.next
       val tokens   = interval.getName.split(',')
@@ -129,11 +131,11 @@ class GenotypeFromGroupedBam
     val gather = genotypes.gather { tasks: Seq[GenotypeStr] =>
       new GatherVcfs(
         in  = tasks.map { task => PathUtil.pathTo(task.output + ".vcf.gz") },
-        out = PathUtil.pathTo(this.output + ".vcf.gz")
+        out = vcf
       )
     }
     root ==> scatter
-    gather ==> new DeleteFiles(dir)
+    gather ==> (new DeleteFiles(dir) :: new IndexVcfGz(vcf))
   }
 }
 
