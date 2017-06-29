@@ -49,7 +49,7 @@ import scala.util.Failure
   """
     |Calls a diploid genotype for individually called duplex molecules.
     |
-    |The input VCF should be produce by joint calling each duplex source molecule as though they are separte samples.
+    |The input VCF should be produce by joint calling each duplex source molecule as though they are separate samples.
     |This can be achieved by transforming the output of fgbio's `GroupReadsByUmi` with `ReadGroupPerDuplexMolecularId`,
     |and then running it through HipSTR, to be produce a multi-sample VCF.  The following options should be used when
     |running HipSTR:
