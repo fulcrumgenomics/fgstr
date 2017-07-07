@@ -220,6 +220,7 @@ class StrGenotypeConcordance
               val abs = minAbs(callLength - known1, callLength - known2)
               if (abs < 0) Math.ceil(abs) else Math.floor(abs)
             }.toInt
+            logger.info(f"\tstutter [$stutter] call [$callLength] depth [${call.count}]")
             if (!requireConcordanceForStutter || concordant) {
               stutterCounter.count(stutter, call.count)
               if (confidentSite) stutterConfidentCounter.count(stutter, call.count)

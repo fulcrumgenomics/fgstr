@@ -35,10 +35,11 @@ class ReadGroupPerDuplexMolecularIdTest extends UnitSpec {
 
   private case class ReadGroupsAndRecords(readGroups: Seq[SAMReadGroupRecord], records: Seq[SamRecord])
 
-  private def run(builder: SamBuilder, intervals: Option[PathToIntervals] = None, minReads:Seq[Int]= Seq(0), perStrand: Boolean=false): ReadGroupsAndRecords = {
+  private def run(builder: SamBuilder, intervals: Option[PathToIntervals] = None, minReads:Seq[Int]= Seq(0),
+                  perStrand: Boolean=false, span: Boolean=false): ReadGroupsAndRecords = {
     val input      = builder.toTempFile()
     val output     = makeTempFile("output", ".bam")
-    executeFgstrTool(new ReadGroupPerDuplexMolecularId(input=input, output=output, intervals=intervals, minReads=minReads, perStrand=perStrand))
+    executeFgstrTool(new ReadGroupPerDuplexMolecularId(input=input, output=output, intervals=intervals, minReads=minReads, perStrand=perStrand, span=span))
     val reader     = SamSource(output)
     val readGroups = reader.header.getReadGroups.toList
     val records    = reader.toIndexedSeq
@@ -95,6 +96,8 @@ class ReadGroupPerDuplexMolecularIdTest extends UnitSpec {
     // update to make the tests below easier
     builder.rg.setSample("Sample-1234")
     builder.rg.setLibrary("Library-1234")
+    builder.rg.setAttribute("cA", "1")
+    builder.rg.setAttribute("cB", "1")
 
     readGroups.length shouldBe 1
     readGroups.head.equivalent(builder.rg) shouldBe true
@@ -213,44 +216,55 @@ class ReadGroupPerDuplexMolecularIdTest extends UnitSpec {
     records.map(_.attributes("RG")) should contain theSameElementsInOrderAs Seq("mid-1", "mid-1", "mid-1", "mid-1", "mid-2", "mid-2")
   }
 
-  it should "only output reads that overlap the given intervals" in {
-    val builder = new SamBuilder(readGroupId=Some("ID"))
+  Seq(true, false).foreach { span =>
+    val name = if (span) "span" else "overlap"
+    it should s"only output reads that $name the given intervals" in {
+      val builder = new SamBuilder(readGroupId=Some("ID"))
 
-    val intervals = new IntervalList(builder.header)
-    intervals.add(new Interval(builder.header.getSequence(0).getSequenceName, 1, 100))
-    val ilist = makeTempFile("test.", ".interval_list")
-    intervals.write(ilist.toFile)
+      val intervals = new IntervalList(builder.header)
+      intervals.add(new Interval(builder.header.getSequence(0).getSequenceName, 1, 100))
+      val ilist = makeTempFile("test.", ".interval_list")
+      intervals.write(ilist.toFile)
 
-    // fragment
-    builder.addFrag(attrs=Map("MI" -> "1/A"), unmapped=true)
-    builder.addFrag(attrs=Map("MI" -> "1/B"), unmapped=true)
-    builder.addFrag(attrs=Map("MI" -> "2/A"), unmapped=true)
+      // fragment
+      builder.addFrag(attrs=Map("MI" -> "1/A"), unmapped=true)
+      builder.addFrag(attrs=Map("MI" -> "1/B"), unmapped=true)
+      builder.addFrag(attrs=Map("MI" -> "2/A"), unmapped=true)
 
-    // unmapped
-    builder.addPair(attrs=Map("MI" -> "2/A"), unmapped1=true, unmapped2=true)
-    builder.addPair(attrs=Map("MI" -> "2/B"), unmapped1=true, unmapped2=true)
-    builder.addPair(attrs=Map("MI" -> "3/A"), unmapped1=true, unmapped2=true)
+      // unmapped
+      builder.addPair(attrs=Map("MI" -> "2/A"), unmapped1=true, unmapped2=true)
+      builder.addPair(attrs=Map("MI" -> "2/B"), unmapped1=true, unmapped2=true)
+      builder.addPair(attrs=Map("MI" -> "3/A"), unmapped1=true, unmapped2=true)
 
-    // mapped in the intervals
-    builder.addPair(attrs=Map("MI" -> "3/A"), contig=0, start1=1, start2=1)
-    builder.addPair(attrs=Map("MI" -> "3/B"), contig=0, start1=100, start2=100)
+      // mapped in the intervals
+      builder.addPair(attrs=Map("MI" -> "3/A"), contig=0, start1=1, start2=1)
+      builder.addPair(attrs=Map("MI" -> "3/B"), contig=0, start1=100, start2=100)
 
-    // mapped outside
-    builder.addPair(attrs=Map("MI" -> "4/A"), contig=0, start1=200, start2=200)
-    builder.addPair(attrs=Map("MI" -> "5/A"), contig=1, start1=100, start2=100)
+      // mapped outside
+      builder.addPair(attrs=Map("MI" -> "4/A"), contig=0, start1=200, start2=200)
+      builder.addPair(attrs=Map("MI" -> "5/A"), contig=1, start1=100, start2=100)
 
-    val ReadGroupsAndRecords(readGroups, records) = run(builder, minReads=Seq(0), intervals=Some(ilist))
+      val ReadGroupsAndRecords(readGroups, records) = run(builder, minReads=Seq(0), intervals=Some(ilist), span=span)
 
-    readGroups.length shouldBe 1
-    readGroups.head.getId shouldBe "mid-3"
+      readGroups.length shouldBe 1
+      readGroups.head.getId shouldBe "mid-3"
 
-    records.length shouldBe 4
-    records.foreach { record =>
-      record.attributes("RG") shouldBe "mid-3"
+      if (span) {
+        records.length shouldBe 2
+        records.foreach { record =>
+          record.attributes("RG") shouldBe "mid-3"
+        }
+      }
+      else {
+        records.length shouldBe 4
+        records.foreach { record =>
+          record.attributes("RG") shouldBe "mid-3"
+        }
+      }
     }
   }
 
-  it should "suport --min-reads" in {
+  it should "support --min-reads" in {
     val builder = new SamBuilder
 
     // three total reads, two AB reads, one BA read
@@ -286,6 +300,8 @@ class ReadGroupPerDuplexMolecularIdTest extends UnitSpec {
       else {
         builder.rg.setSample("Sample-0")
       }
+      builder.rg.setAttribute("cA", "0")
+      builder.rg.setAttribute("cB", "0")
       readGroups.head.equivalent(builder.rg) shouldBe true
     }
   }

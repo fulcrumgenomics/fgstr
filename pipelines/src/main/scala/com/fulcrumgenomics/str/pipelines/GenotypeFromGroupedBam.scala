@@ -27,7 +27,6 @@ package com.fulcrumgenomics.str.pipelines
 
 import java.nio.file.Files
 
-import com.fulcrumgenomics.bam.api.SamOrder
 import com.fulcrumgenomics.commons.CommonsDef._
 import com.fulcrumgenomics.commons.io.{Io, PathUtil}
 import com.fulcrumgenomics.sopt.{arg, clp}
@@ -92,7 +91,8 @@ class GenotypeFromGroupedBam
  @arg(flag='M', minElements=1, maxElements=3, doc="The minimum number of raw reads per source molecule.")
  val minReads: Seq[Int] = Seq(1),
  @arg(flag='s', doc="Call genotypes per-duplex-strand") val perStrand: Boolean = false,
- @arg(flag='t', doc="Temporary directory in which to store intermediate results.") val tmp: Option[DirPath] = None
+ @arg(flag='t', doc="Temporary directory in which to store intermediate results.") val tmp: Option[DirPath] = None,
+ @arg(          doc="Keep intermediate files.") val keepIntermediates: Boolean = false
 ) extends Pipeline(Some(output.getParent)) {
 
 
@@ -135,7 +135,8 @@ class GenotypeFromGroupedBam
       )
     }
     root ==> scatter
-    gather ==> (new DeleteFiles(dir) :: new IndexVcfGz(vcf))
+    gather ==> new IndexVcfGz(vcf)
+    if (!keepIntermediates) gather ==> new DeleteFiles(dir)
   }
 }
 
@@ -150,16 +151,16 @@ private class GenotypeStr
   val suffix: Option[String] = None
 ) extends Pipeline(suffix=Some("." + output.getFileName)) {
 
-  def f(ext: String): FilePath = PathUtil.pathTo(output + ext)
-
   require(intervalList.length == 1, s"Expected one STR interval, found ${intervalList.length}")
 
   def build(): Unit = {
-    val bed       = f(".regions.bed")
-    val midBam    = f(".mid.bam")
-    val hipStrVcf = f(".hipstr.vcf.gz")
-    val stutter   = f(".stutter.txt")
-    val intervals = f(".interval_list")
+    def f(ext: String): FilePath = PathUtil.pathTo(output + ext)
+
+    val bed        = f(".regions.bed")
+    val midBam     = f(".mid.bam")
+    val hipStrVcf  = f(".hipstr.vcf.gz")
+    val stutter    = f(".stutter.txt")
+    val intervals  = f(".interval_list")
 
     // for HipSTR
     val useUnpaired = true // since we may extract only one end of a pair
