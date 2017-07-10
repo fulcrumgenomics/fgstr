@@ -31,13 +31,17 @@ import com.fulcrumgenomics.commons.CommonsDef._
 import com.fulcrumgenomics.commons.io.{Io, PathUtil}
 import com.fulcrumgenomics.sopt.{arg, clp}
 import com.fulcrumgenomics.str.tasks.HipStr.CreateRegionsBed
-import com.fulcrumgenomics.str.tasks.{HipStr, ReadGroupPerDuplexMolecularId, StrGenotypeDuplexMolecules}
+import com.fulcrumgenomics.str.tasks.{FilterHaploidVcf, HipStr, ReadGroupPerDuplexMolecularId, StrGenotypeDuplexMolecules}
 import dagr.core.cmdline.Pipelines
-import dagr.core.tasksystem.{Pipeline, SimpleInJvmTask}
+import dagr.core.config.Configuration
+import dagr.core.tasksystem.Pipes.PipeWithNoResources
+import dagr.core.tasksystem.{Pipeline, Pipes, ShellCommand, SimpleInJvmTask}
 import dagr.tasks.DagrDef.{FilePath, PathPrefix, PathToBam, PathToFasta, PathToIntervals}
+import dagr.tasks.DataTypes.Vcf
 import dagr.tasks.ScatterGather.{Partitioner, Scatter}
 import dagr.tasks.misc.{DeleteFiles, IndexVcfGz}
 import dagr.tasks.picard.GatherVcfs
+import dagr.tasks.vc.FilterFreeBayesCalls.BgzipBinConfigKey
 import htsjdk.samtools.util.IntervalList
 
 @clp(
@@ -95,7 +99,6 @@ class GenotypeFromGroupedBam
  @arg(          doc="Keep intermediate files.") val keepIntermediates: Boolean = false
 ) extends Pipeline(Some(output.getParent)) {
 
-
   override def build(): Unit = {
     Io.assertReadable(Seq(input, ref, intervals))
     Io.assertCanWriteFile(output)
@@ -149,18 +152,19 @@ private class GenotypeStr
   val perStrand: Boolean = false,
   val output: DirPath,
   val suffix: Option[String] = None
-) extends Pipeline(suffix=Some("." + output.getFileName)) {
+) extends Pipeline(suffix=Some("." + output.getFileName)) with Configuration {
 
   require(intervalList.length == 1, s"Expected one STR interval, found ${intervalList.length}")
 
   def build(): Unit = {
     def f(ext: String): FilePath = PathUtil.pathTo(output + ext)
 
-    val bed        = f(".regions.bed")
-    val midBam     = f(".mid.bam")
-    val hipStrVcf  = f(".hipstr.vcf.gz")
-    val stutter    = f(".stutter.txt")
-    val intervals  = f(".interval_list")
+    val bed         = f(".regions.bed")
+    val midBam      = f(".mid.bam")
+    val hipStrVcf   = f(".hipstr.vcf.gz")
+    val filteredVcf = f(".filteredVcf.vcf.gz")
+    val stutter     = f(".stutter.txt")
+    val intervals   = f(".interval_list")
 
     // for HipSTR
     val useUnpaired = true // since we may extract only one end of a pair
@@ -189,10 +193,16 @@ private class GenotypeStr
       toIntervals ==> (toBed :: toRgBam) ==> toHipstrVcf
     }
 
-    // merge the calls
-    val indexVcf      = new IndexVcfGz(hipStrVcf)
-    val toFinalVcf    = new StrGenotypeDuplexMolecules(input=hipStrVcf, output=output, ref=ref, intervals=intervals, perStrand=perStrand)
-    root ==> toHipstrVcf ==> indexVcf ==> toFinalVcf
+    // Filter the haploid calls
+    val filterVcf = {
+      val compressOutput = new ShellCommand(configureExecutableFromBinDirectory(BgzipBinConfigKey, "bgzip").toString, "-c") with PipeWithNoResources[Vcf,Vcf]
+      new FilterHaploidVcf(input=hipStrVcf) | compressOutput > filteredVcf
+    } withName "FilterHaploidVcf"
+    val indexFilteredVcf = new IndexVcfGz(filteredVcf)
+
+    // merge the per-duplex calls into a single-sample call
+    val toFinalVcf    = new StrGenotypeDuplexMolecules(input=filteredVcf, output=output, ref=ref, intervals=intervals, perStrand=perStrand)
+    root ==> toHipstrVcf ==> filterVcf ==> indexFilteredVcf ==> toFinalVcf
   }
 }
 

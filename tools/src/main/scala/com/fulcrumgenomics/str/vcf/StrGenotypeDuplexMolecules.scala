@@ -118,7 +118,6 @@ class StrGenotypeDuplexMolecules
     val infoWriter   = Io.toWriter(f(".info.txt"))
     val progress     = ProgressLogger(logger=logger, noun="variants")
 
-
     verifySampleNames(vcfIn.getFileHeader)
 
     strIntervals.foreach { str =>

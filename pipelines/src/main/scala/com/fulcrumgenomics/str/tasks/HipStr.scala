@@ -25,9 +25,9 @@
 
 package com.fulcrumgenomics.str.tasks
 
-import java.nio.file.Path
+import java.nio.file.{Path, Paths}
 
-import com.fulcrumgenomics.commons.io.Io
+import com.fulcrumgenomics.commons.io.{Io, PathUtil}
 import com.fulcrumgenomics.str.tasks.HipStr.PathToBed
 import dagr.core.config.Configuration
 import dagr.core.execsystem.{Cores, Memory}
@@ -40,9 +40,13 @@ import scala.collection.mutable.ListBuffer
 
 object HipStr extends Configuration {
   type PathToBed = FilePath
-  val HipStrExecutableConfigKey: String = "hipstr.executable"
+  val HipStrDirConfigKey: String = "hipstr.dir"
 
-  def findHipStr: Path = configureExecutableFromBinDirectory(HipStrExecutableConfigKey, "HipSTR")
+  def findHipStr: Path = configureExecutableFromBinDirectory(HipStrDirConfigKey, "HipSTR")
+
+  def findHipStrScript(scriptName: String): Path = {
+    configureExecutableFromBinDirectory(HipStrDirConfigKey, scriptName, subDir=Some(Paths.get("scripts")))
+  }
 
    /** Creates the regions BED file for HipStr: Required format is tab-delimited columns CHROM START STOP PERIOD NCOPIES */
   class CreateRegionsBed(intervals: PathToIntervals, bed: PathToBed) extends SimpleInJvmTask {
@@ -79,7 +83,7 @@ class HipStr(input: PathToBam,
              haploidChromosomes: Option[IntervalList] = None,
              maxStrLength: Option[Int] = Some(150),
              maxFlankHaplotypes: Option[Int] = Some(10),
-             filterFlankingHaplotypes: Boolean = true)
+             minFlankFrequency: Option[Double] = Some(0.1))
   extends ProcessTask with FixedResources {
 
   requires(Cores(1), Memory("2g"))
@@ -109,8 +113,8 @@ class HipStr(input: PathToBam,
       }
     }
     maxStrLength.foreach(l => buffer.append("--max-str-len", l))
-    maxFlankHaplotypes.foreach(l => buffer.append("--max-flank-haps", l))
-    if (filterFlankingHaplotypes) buffer.append("--filter-flank-haps")
+    maxFlankHaplotypes.foreach(l => buffer.append("--max-hap-flanks", l))
+    minFlankFrequency.foreach(f => buffer.append("--min-flank-freq", f))
 
     buffer
   }

@@ -88,7 +88,7 @@ class ReadGroupPerDuplexMolecularId
   @arg(flag='T', doc="The output tag from UMI grouping.") val assignTag: String = ConsensusTags.MolecularId,
   @arg(flag='s', doc="Create a read group per-strand of a duplex molecule") val perStrand: Boolean = false,
   @arg(flag='S', doc="The sort order of the output") val samOrder: Option[SamOrder] = None,
-  @arg(          doc="Require that reads that span the given intervals (i.e. do not start/stop within)") val span: Boolean = true
+  @arg(          doc="Require that reads that span the given intervals (i.e. do not start/stop within)") val span: Boolean = false
 ) extends FgStrTool with LazyLogging {
 
   Io.assertReadable(input)
