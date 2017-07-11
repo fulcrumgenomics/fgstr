@@ -40,7 +40,7 @@ import dagr.tasks.DagrDef.{FilePath, PathPrefix, PathToBam, PathToFasta, PathToI
 import dagr.tasks.DataTypes.Vcf
 import dagr.tasks.ScatterGather.{Partitioner, Scatter}
 import dagr.tasks.misc.{DeleteFiles, IndexVcfGz}
-import dagr.tasks.picard.GatherVcfs
+import dagr.tasks.picard.{GatherVcfs, UpdateVcfSequenceDictionary}
 import dagr.tasks.vc.FilterFreeBayesCalls.BgzipBinConfigKey
 import htsjdk.samtools.util.IntervalList
 
@@ -159,12 +159,15 @@ private class GenotypeStr
   def build(): Unit = {
     def f(ext: String): FilePath = PathUtil.pathTo(output + ext)
 
-    val bed         = f(".regions.bed")
-    val midBam      = f(".mid.bam")
-    val hipStrVcf   = f(".hipstr.vcf.gz")
-    val filteredVcf = f(".filteredVcf.vcf.gz")
-    val stutter     = f(".stutter.txt")
-    val intervals   = f(".interval_list")
+    val bed           = f(".regions.bed")
+    val midBam        = f(".mid.bam")
+    val hipStrVcf     = f(".hipstr.vcf.gz")
+    val updatedVcf    = f(".hipstr.updated.vcf.gz")
+    val filteredVcf   = f(".filteredVcf.vcf.gz")
+    val filteredStats = f(".filteredVcf.stats.txt")
+    val stutter       = f(".stutter.txt")
+    val intervals     = f(".interval_list")
+    val dict          = PathUtil.replaceExtension(ref, ".dict")
 
     // for HipSTR
     val useUnpaired = true // since we may extract only one end of a pair
@@ -193,16 +196,20 @@ private class GenotypeStr
       toIntervals ==> (toBed :: toRgBam) ==> toHipstrVcf
     }
 
+    // FIXME: https://github.com/tfwillems/HipSTR/issues/36
+    val updateVcf = new UpdateVcfSequenceDictionary(in=hipStrVcf, out=updatedVcf, dict)
+    updateVcf.createIndex = Some(false) // FIXME: https://github.com/broadinstitute/picard/issues/863
+
     // Filter the haploid calls
     val filterVcf = {
       val compressOutput = new ShellCommand(configureExecutableFromBinDirectory(BgzipBinConfigKey, "bgzip").toString, "-c") with PipeWithNoResources[Vcf,Vcf]
-      new FilterHaploidVcf(input=hipStrVcf) | compressOutput > filteredVcf
+      new FilterHaploidVcf(input=updatedVcf, stats=Some(filteredStats)) | compressOutput > filteredVcf
     } withName "FilterHaploidVcf"
     val indexFilteredVcf = new IndexVcfGz(filteredVcf)
 
     // merge the per-duplex calls into a single-sample call
     val toFinalVcf    = new StrGenotypeDuplexMolecules(input=filteredVcf, output=output, ref=ref, intervals=intervals, perStrand=perStrand)
-    root ==> toHipstrVcf ==> filterVcf ==> indexFilteredVcf ==> toFinalVcf
+    root ==> toHipstrVcf ==> updateVcf ==> filterVcf ==> indexFilteredVcf ==> toFinalVcf
   }
 }
 

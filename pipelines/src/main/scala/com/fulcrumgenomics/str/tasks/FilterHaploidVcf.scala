@@ -25,7 +25,7 @@
 
 package com.fulcrumgenomics.str.tasks
 
-import com.fulcrumgenomics.FgBioDef.PathToVcf
+import com.fulcrumgenomics.FgBioDef.{FilePath, PathToVcf}
 import dagr.core.execsystem.{Cores, Memory}
 import dagr.core.tasksystem.{FixedResources, PipeOut, ProcessTask}
 import dagr.tasks.DataTypes.Vcf
@@ -33,8 +33,10 @@ import dagr.tasks.DataTypes.Vcf
 import scala.collection.mutable.ListBuffer
 
 class FilterHaploidVcf(input: PathToVcf,
+                       stats: Option[FilePath] = None,
                        minQuality: Option[Double] = None,
-                       spanningReadsRequired: Boolean = false)
+                       spanningReadsRequired: Boolean = true,
+                       maxLocusDepth: Option[Int] = Some(100000000)) // effectively infinite
   extends ProcessTask with FixedResources with PipeOut[Vcf] {
 
   requires(Cores(1), Memory("2g"))
@@ -48,8 +50,10 @@ class FilterHaploidVcf(input: PathToVcf,
     buffer.append("python")
     buffer.append(script)
     buffer.append("--vcf", input)
+    stats.foreach(s => buffer.append("--stats", s))
     minQuality.foreach(q => buffer.append("--min-call-qual", q))
-    if (spanningReadsRequired) buffer.append("---no-spanning")
+    if (spanningReadsRequired) buffer.append("--no-spanning")
+    maxLocusDepth.foreach(d => buffer.append("--max-loc-depth", d))
 
     buffer
   }
