@@ -44,6 +44,7 @@ import htsjdk.variant.vcf._
 
 import scala.collection.mutable.ListBuffer
 import scala.util.Failure
+import scala.collection.mutable
 
 @clp(group=ClpGroups.VcfOrBcf, description=
   """
@@ -247,11 +248,32 @@ class StrGenotypeDuplexMolecules
   private def addFormatFields(ctx: VariantContext, builder: GenotypeBuilder, calls: Seq[StrAllele], unitLength: Int): Unit = {
     val alleles = calls.map(_.allele)
 
-    var dp: Int = 0
-    val gbs: ListBuffer[Option[Int]] = ListBuffer(None, None)
-    val pdps: ListBuffer[Double] = ListBuffer(0.0, 0.0)
+    val gbs: ListBuffer[Option[Int]] = ListBuffer(alleles.map(_ => None):_*)
+    val pdps: ListBuffer[Double] = ListBuffer(alleles.map(_ => 0.0):_*)
     var dStutter: Int = 0
     var dFlankIndel: Int = 0
+
+    // Get the depth per called allele
+    val allelesToDepth: mutable.Map[Allele, Int] = mutable.HashMap[Allele, Int]()
+    val altAlleleCounts = ctx.getAttributeAsIntList("AC", 0)
+    val refAlleleIndex  = ctx.getAlleleIndex(ctx.getReference)
+    alleles.foreach { allele =>
+       if (allele.isReference) {
+         allelesToDepth(allele) = ctx.getAttributeAsInt("REFAC", 0)
+       }
+       else {
+         val alleleIndex = {
+           val idx = ctx.getAlleleIndex(allele)
+           if (idx < refAlleleIndex) idx
+           else idx - 1
+         }
+         allelesToDepth(allele) = altAlleleCounts.get(alleleIndex)
+       }
+    }
+
+    // DP and AD
+    val dp: Int = allelesToDepth.values.sum
+    val ad: Array[Int] = ctx.getAlleles.map { allele => allelesToDepth.getOrElse(allele, 0) }.toArray
 
     ctx.getGenotypes.foreach { genotype =>
       val genotypeAlleles = genotype.getAlleles
@@ -259,9 +281,6 @@ class StrGenotypeDuplexMolecules
       val genotypeAllele = genotypeAlleles.get(0)
 
       alleles.zipWithIndex.find(_._1 == genotypeAllele).foreach { case (allele, alleleIndex) =>
-
-        // DP
-        dp += genotype.getAttributeAsInt("DP", 0)
 
         // GB
         if (genotype.hasAnyAttribute("GB")) {
@@ -292,7 +311,8 @@ class StrGenotypeDuplexMolecules
     }
 
     // set them
-    builder.attribute("DP", dp)
+    builder.DP(dp)
+    builder.AD(ad)
     if (gbs.forall(_.isDefined)) builder.attribute("GB", gbs.flatten.toIterator.toJavaList)
     builder.attribute("PDP", pdps.toIterator.toJavaList)
     builder.attribute("DSTUTTER", dStutter)
@@ -307,6 +327,7 @@ class StrGenotypeDuplexMolecules
     //   use
     val headerLines: util.Set[VCFHeaderLine] = new util.HashSet[VCFHeaderLine](header.getMetaDataInSortedOrder)
     headerLines.add(new VCFFormatHeaderLine("STR_GT", VCFHeaderLineCount.UNBOUNDED, VCFHeaderLineType.Float, "The STR genotype (number of units)"))
+    headerLines.add(new VCFFormatHeaderLine("AD", VCFHeaderLineCount.R, VCFHeaderLineType.Integer, "Allelic depths for the ref and alt alleles in the order listed"))
     val outputHeader = new VCFHeader(headerLines, Iterator(sampleName).toJavaSet)
     if (outputHeader.getSequenceDictionary == null) outputHeader.setSequenceDictionary(dict)
     val builder = new VariantContextWriterBuilder()
