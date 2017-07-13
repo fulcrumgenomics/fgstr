@@ -51,16 +51,19 @@ for (i in 1:nrow(data)) {
     unitLength  = row[4]
     refNumUnits = row[5]
     strName     = row[[6]]
-    if (grepl(":", row[[7]])) {
-        known1      = NA
-        known2      = NA
-        rowData     = toString(row[[7]])
-    } else {
-        known1      = as.numeric(row[[7]])
-        known2      = as.numeric(row[[8]])
-        rowData     = toString(row[[9]])
+    known       = c()
+    for (j in 7:ncol(row)) {
+        if (grepl(":", row[[j]])) {
+            stopifnot(j == ncol(row))
+            rowData     = toString(row[[j]])
+        }
+        else {
+            known = append(known, row[[j]])
+        }
     }
 
+    # Row data contains a comma-seperated list of key-value pairs (colon-delimited), each representing the repeat length
+    # and observation counts
     numUnits = c()
     counts   = c()
     tuples = strsplit(rowData, ",")[[1]]
@@ -76,11 +79,10 @@ for (i in 1:nrow(data)) {
         scale_x_continuous() +
         scale_fill_manual(values=fgcolors) +
         scale_color_gradient(low=fgblue, high=fggreen) +
-        labs(x="# of Repeat Units", y="Raw counts", title=paste(strName, " (", chromosome, ":", start, "-", end, ")", sep="")) +
+        labs(x="# of Repeat Units", y="Raw counts", title=paste(strName, " (", chromosome, ":", start, "-", end, " motif of length ", unitLength, ")", sep="")) +
         theme(plot.title = element_text(hjust = 0.5), legend.title=element_blank())
-    if (!is.na(known1)) {
-        p = p + geom_vline(xintercept = known1, linetype="dotted") +
-            geom_vline(xintercept = known2, linetype="dotted")
+    for (k in known) {
+        p = p + geom_vline(xintercept = k, linetype="dotted")
     }
     print(p)
 }

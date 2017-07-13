@@ -81,10 +81,8 @@ object StrGenotypeConcordance {
     |  1. the repeat unit length (ex. `3` for the tri-nucleotide repeat `TCATCATCATCA`).
     |  2. the number of repeat units (ex. `4` for the tri-nucleotide repeat `TCATCATCATCA`).
     |  3. the name of the STR (ex. D1S1656)
-    |  4. the expected (known or truth) number of repeat units for allele #1
-    |  5. the expected (known or truth) number of repeat units for allele #2
-    |Columns 4-5 are required. See [the wiki](https://github.com/fulcrumgenomics/fgstr#input-requirements) for more
-    |details.
+    |Optionally, additional columns can be given for one or more expected truth alleles.  For example, a known haploid
+    |call should have one extra column, a known diploid call should have two extra columns, and so on.
     |
     |The `--max-distance` can be used to consider two similar STR calls the same, for example `--max-distance 0.5` will
     |consider the calls `17.0` and `17.5` to be the same.

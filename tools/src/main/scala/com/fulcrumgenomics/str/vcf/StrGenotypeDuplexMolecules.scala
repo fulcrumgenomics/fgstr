@@ -63,31 +63,33 @@ import scala.util.Failure
     |  --no-rmdup \
     |  --hap-chr-file <path-to-a-list-of-all-chromosomes>.txt \
     |  --max-str-len 150 \
-    |  --max-flank-haps 10 \
-    |  --filter-flank-haps
+    |  --max-hap-flanks 10 \
+    |  --min-flank-freq 0.1
     |```
-    |
-    |NB: `--max-flank-haps` and `--filter-flank-haps` require the following branch:
-    |  https://github.com/tfwillems/HipSTR/pull/30
     |
     |An interval list of specifying the same regions as input to HipSTR should be given.  The name field should contain
     |a comma list of values as follows:
     |  1. the repeat unit length (ex. `3` for the tri-nucleotide repeat `TCATCATCATCA`).
     |  2. the number of repeat units (ex. `4` for the tri-nucleotide repeat `TCATCATCATCA`).
     |  3. the name of the STR (ex. D1S1656)
-    |  4. optionally, the expected (known or truth) number of repeat units for allele #1
-    |  5. optionally, the expected (known or truth) number of repeat units for allele #2
+    |An additional columns will be ignored.
     |
-    |The output will contain a single sample with a diploid genotype call.  The INFO field will have list the allele
-    |frequencies for all alleles observed, not just those in the final genotype.
+    |The output will contain a single sample with a genotype call.  The INFO field will have list the allele
+    |frequencies for all alleles observed, not just those in the final genotype.  The genotype will be chose as follows:
+    |1. Rank the haploid calls by descending frequency.
+    |2. If the cumulative frequency of the called alleles is greater than or equal to the threshold
+    |   (`--min-cumulative-frequency), go to step 4.
+    |3. Include the allele from the most frequent haploid call and go to step 2.
+    |4. If we have only one allele, call it homozygous (diploid), otherwise the ploidy is equal to the # of alleles.
     |
     |A PDF with plots will be output, containing a plot per STR showing the counts observed repeat unit length.  If the
     |expected number of repeat units are given, a horizontal dotted line will be plotted for each expected allele.
     |
     |If the `--per-strand` option is set, then the input should contain a sample per duplex source molecule and strand
     |(i.e. A and B strand respectively).  The calls from both strands will be compared for perfect agreement.  If only
-    |one strand is present, then that call is retained.  The produced per duplex source molecule genotype calls are then
-    |treated normally.
+    |one strand is present, then that call is still retained.  The produced per duplex source molecule genotype calls
+    |are then treated normally.  If you wish to require at least one read (or more) on both strand respectively, see
+    |the `--min-reads` option in `ReadGroupPerDuplexMolecularId`.
   """)
 class StrGenotypeDuplexMolecules
 (
@@ -97,7 +99,7 @@ class StrGenotypeDuplexMolecules
   @arg(flag='l', doc="Interval list with the STR regions.") val intervals: PathToIntervals,
   @arg(flag='S', doc="The output sample name") val sampleName: String = "Sample",
   @arg(flag='s', doc="Expect a sample per-strand of a duplex molecule") val perStrand: Boolean = false,
-  @arg(flag='m', doc="Minimum minor allele frequency to call a heterozygous genotype") val minimumMaf: Double = 0.2,
+  @arg(flag='m', doc="Cumulative allele frequency threshold to require.") val minCumulativeFrequency: Double = 0.9,
   private val skipPlots: Boolean = false // for not plotting in tests
 ) extends FgStrTool with LazyLogging {
 
@@ -134,24 +136,28 @@ class StrGenotypeDuplexMolecules
           val alleles    = ctx.getAlleles.toSeq
 
           // get the count per allele
-          val counts: Seq[Int] =  alleles.map { allele => genotypes.map { genotype => genotype.countAllele(allele) }.sum }
+          val counts: Seq[Int] = alleles.map { allele => genotypes.map { genotype => genotype.countAllele(allele) }.sum }
           val totalCounts: Int = counts.sum
 
           // get the new genotype
           val allCalls = StrAllele.toCalls(str, ctx, counts)
 
-          // naively choose the two most frequent genotypes
+          // choose the alleles
           val genotypeCalls = {
-            allCalls.take(2) match {
-              case Seq()             =>
-                val noCall = StrAllele(Allele.NO_CALL, 0, 0)
-                Seq(noCall, noCall)
-              case Seq(call)         =>
-                Seq(call, call)
-              case Seq(call1, call2) =>
-                //val maf: Double = call2.count / (call1.count + call2.count).toDouble
-                val maf: Double = call2.count / totalCounts.toDouble
-                if (maf < minimumMaf) Seq(call1, call1) else Seq(call1, call2)
+            var cumFreq = 0.0
+            allCalls.takeWhile { call =>
+              if (minCumulativeFrequency <= cumFreq) {
+                false
+              }
+              else {
+                val freq = call.count / totalCounts.toDouble
+                cumFreq += freq
+                true
+              }
+            } match {
+              case Seq()     => val noCall = StrAllele(Allele.NO_CALL, 0, 0); Seq(noCall, noCall)
+              case Seq(call) => Seq(call, call)
+              case calls     => calls
             }
           }
           val genotypeBuilder = new GenotypeBuilder(sampleName, genotypeCalls.map(_.allele).toIterator.toJavaList)

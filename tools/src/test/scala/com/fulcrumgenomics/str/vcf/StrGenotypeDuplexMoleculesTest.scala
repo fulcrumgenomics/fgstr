@@ -85,12 +85,13 @@ class StrGenotypeDuplexMoleculesTest extends UnitSpec {
   private def run(builder: VariantContextSetBuilder,
                   intervals: PathToIntervals=this.intervals,
                   ref: PathToFasta=this.ref,
-                  minimumMaf: Double = 0.2,
+                  minCumulativeFrequency: Double = 0.9,
                   perStrand: Boolean = false,
                   skipPlots: Boolean = true): Outputs = {
     val input  = builder.toTempFile()
     val output = makeTempFile("test.", ".prefix")
-    val tool   = new StrGenotypeDuplexMolecules(input=input, output=output, intervals=intervals, ref=ref, minimumMaf=minimumMaf, perStrand=perStrand, skipPlots=skipPlots)
+    val tool   = new StrGenotypeDuplexMolecules(input=input, output=output, intervals=intervals, ref=ref,
+      minCumulativeFrequency=minCumulativeFrequency, perStrand=perStrand, skipPlots=skipPlots)
     val logging = executeFgstrTool(tool)
     Outputs(output)
   }
@@ -234,31 +235,7 @@ class StrGenotypeDuplexMoleculesTest extends UnitSpec {
     actualLines should contain theSameElementsInOrderAs expectedLines
   }
 
-  it should "choose the most frequent two alleles in the case of 3+ alleles" in {
-    val builder = new VariantContextSetBuilder(sampleNames=Seq.range(1, 7).map(i => s"S-$i"))
-    val alleles = List("AAA", "AAAAAA", "AAAAAAAAA")
-
-    // ref is most frequent, then allele #2, then allele #1
-    builder.addVariant(refIdx=0, start=1, variantAlleles=alleles, genotypeAlleles=List(alleles(0)), sampleName=Some("S-1"))
-    builder.addVariant(refIdx=0, start=1, variantAlleles=alleles, genotypeAlleles=List(alleles(0)), sampleName=Some("S-2"))
-    builder.addVariant(refIdx=0, start=1, variantAlleles=alleles, genotypeAlleles=List(alleles(0)), sampleName=Some("S-3"))
-    builder.addVariant(refIdx=0, start=1, variantAlleles=alleles, genotypeAlleles=List(alleles(2)), sampleName=Some("S-4"))
-    builder.addVariant(refIdx=0, start=1, variantAlleles=alleles, genotypeAlleles=List(alleles(2)), sampleName=Some("S-5"))
-    builder.addVariant(refIdx=0, start=1, variantAlleles=alleles, genotypeAlleles=List(alleles(1)), sampleName=Some("S-6"))
-
-    val outputs  = run(builder)
-    val variants = outputs.variants
-
-    variants.length shouldBe 1
-    variants.head.getGenotypes.length shouldBe 1
-    val genotype = variants.head.getGenotype(0)
-    genotype.isHet shouldBe true
-    genotype.isHetNonRef shouldBe false
-    genotype.getAlleles.map(_.getBaseString).toSeq should contain theSameElementsAs List(alleles(0), alleles(2))
-    getStrGenotype(genotype) should contain theSameElementsInOrderAs Seq(1.0, 3.0)
-  }
-
-  it should "handle an interval list with known calls" in {
+   it should "handle an interval list with known calls" in {
     val builder   = new VariantContextSetBuilder(sampleNames=List("mid-1", "mid-2"))
 
     builder.addVariant(refIdx=0, start=1, variantAlleles=List("AAA", "AAAAAA"), genotypeAlleles=List("AAA"), sampleName=Some("mid-1"))
@@ -285,7 +262,7 @@ class StrGenotypeDuplexMoleculesTest extends UnitSpec {
     getStrGenotype(genotype) should contain theSameElementsInOrderAs Seq(1.0, 2.0)
   }
 
-  it should "support the --minimum-maf option" in {
+  it should "support the --min-cumulative-frequency option" in {
     val builder = new VariantContextSetBuilder(sampleNames=Seq.range(1, 7).map(i => s"S-$i"))
     val alleles = List("AAA", "AAAAAA", "AAAAAAAAA")
 
@@ -297,9 +274,9 @@ class StrGenotypeDuplexMoleculesTest extends UnitSpec {
     builder.addVariant(refIdx=0, start=1, variantAlleles=alleles, genotypeAlleles=List(alleles(2)), sampleName=Some("S-5"))
     builder.addVariant(refIdx=0, start=1, variantAlleles=alleles, genotypeAlleles=List(alleles(1)), sampleName=Some("S-6"))
 
-    // MAF 0.5 -> called homozygous ref
+    // MCF 0.5 -> called homozygous ref
     {
-      val outputs  = run(builder, minimumMaf=0.5)
+      val outputs  = run(builder, minCumulativeFrequency=0.5)
       val variants = outputs.variants
 
       variants.length shouldBe 1
@@ -311,9 +288,9 @@ class StrGenotypeDuplexMoleculesTest extends UnitSpec {
       getStrGenotype(genotype) should contain theSameElementsInOrderAs Seq(1.0, 1.0)
     }
 
-    // MAF 1/3 -> called heterozygous ref/alt
+    // MCF 0.75 -> called heterozygous ref/alt
     {
-      val outputs  = run(builder, minimumMaf=1/3.0)
+      val outputs  = run(builder, minCumulativeFrequency=0.75)
       val variants = outputs.variants
 
       variants.length shouldBe 1
@@ -324,11 +301,26 @@ class StrGenotypeDuplexMoleculesTest extends UnitSpec {
       genotype.getAlleles.map(_.getBaseString).toSeq should contain theSameElementsAs List(alleles(0), alleles(2))
       getStrGenotype(genotype) should contain theSameElementsInOrderAs Seq(1.0, 3.0)
     }
+
+    // MCF 0.9 -> called triallelic
+    {
+      val outputs  = run(builder, minCumulativeFrequency=1.0)
+      val variants = outputs.variants
+
+      variants.length shouldBe 1
+      variants.head.getGenotypes.length shouldBe 1
+      val genotype = variants.head.getGenotype(0)
+      genotype.isHet shouldBe true
+      genotype.isHetNonRef shouldBe false
+      genotype.getPloidy shouldBe 3
+      genotype.getAlleles.map(_.getBaseString).toSeq should contain theSameElementsAs List(alleles(0), alleles(2), alleles(1))
+      getStrGenotype(genotype) should contain theSameElementsInOrderAs Seq(1.0, 3.0, 2.0)
+    }
   }
 
   it should "write no-calls when no genotypes overlap an STR" in {
     val builder  = new VariantContextSetBuilder(sampleNames=Seq.range(1, 7).map(i => s"S-$i"))
-    val outputs  = run(builder, minimumMaf=0.5)
+    val outputs  = run(builder, minCumulativeFrequency=0.0)
     val variants = outputs.variants
     variants.length shouldBe 1
     variants.head.getGenotypes.length shouldBe 1
@@ -351,7 +343,7 @@ class StrGenotypeDuplexMoleculesTest extends UnitSpec {
     builder.addVariant(refIdx=0, start=1, variantAlleles=alleles, genotypeAlleles=List(alleles(2)), sampleName=Some("S-5/A"))
     builder.addVariant(refIdx=0, start=1, variantAlleles=alleles, genotypeAlleles=List(alleles(2)), sampleName=Some("S-5/B"))
 
-    val outputs = run(builder, minimumMaf=0.0, perStrand=true)
+    val outputs = run(builder, minCumulativeFrequency=1.0, perStrand=true)
     val variants = outputs.variants
 
     variants.length shouldBe 1
@@ -372,7 +364,7 @@ class StrGenotypeDuplexMoleculesTest extends UnitSpec {
       builder.addVariant(refIdx=0, start=1, variantAlleles=alleles, genotypeAlleles=List.empty, sampleName=Some(s"S-$i"))
     }
 
-    val outputs  = run(builder, minimumMaf=0.0)
+    val outputs  = run(builder, minCumulativeFrequency=1.0)
     val variants = outputs.variants
 
     variants.length shouldBe 1
