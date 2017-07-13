@@ -162,6 +162,7 @@ private class GenotypeStr
     val bed           = f(".regions.bed")
     val midBam        = f(".mid.bam")
     val hipStrVcf     = f(".hipstr.vcf.gz")
+    val hipStrVcfSS   = f(".hipstr.single_strand.vcf.gz")
     val updatedVcf    = f(".hipstr.updated.vcf.gz")
     val filteredVcf   = f(".filteredVcf.vcf.gz")
     val filteredStats = f(".filteredVcf.stats.txt")
@@ -179,10 +180,10 @@ private class GenotypeStr
     val toBed          = new CreateRegionsBed(intervals=intervals, bed=bed)
 
     val toHipstrVcf = if (perStrand) {
-      val strandBam = f("mid.per_strand.bam")
+      val strandBam = f(".mid.per_strand.bam")
       // learn the stutter model from calling reads from the same duplex source molecule
       val toDuplexRgBam  = new ReadGroupPerDuplexMolecularId(input=input, output=midBam, ref=Some(ref), intervals=Some(intervals), minReads=minReads)
-      val toStutterModel = new HipStr(input=midBam, ref=ref, regions=bed, output=hipStrVcf, stutterOut=Some(stutter), haploidChromosomes=Some(intervalList))
+      val toStutterModel = new HipStr(input=midBam, ref=ref, regions=bed, output=hipStrVcfSS, stutterOut=Some(stutter), haploidChromosomes=Some(intervalList))
 
       // apply the stutter model when calling reads from the same strand of the duplex source molecule
       val toStrandRgBam  = new ReadGroupPerDuplexMolecularId(input=input, output=strandBam, ref=Some(ref), intervals=Some(intervals), minReads=minReads, perStrand=true)
