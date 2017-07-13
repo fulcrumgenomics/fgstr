@@ -35,9 +35,11 @@ import dagr.tasks.JarTask
 import scala.collection.mutable
 import scala.collection.mutable.ListBuffer
 
-object FgStrTask {
+object FgStrTask extends Configuration {
   /** Override to return the path to the fgstr-tools jar. */
   val FgStrJarConfigPath = "fgstr-tools.jar"
+
+  lazy val fgStrJar: Path = configure[Path](FgStrTask.FgStrJarConfigPath)
 }
 
 /**
@@ -65,7 +67,7 @@ abstract class FgStrTask(var compressionLevel: Option[Int] = None)
   }
 
   /** Can be overridden to use a specific FgStr Tools jar. */
-  protected def fgStrJar: Path = configure[Path](FgStrTask.FgStrJarConfigPath)
+  protected def fgStrJar: Path = FgStrTask.fgStrJar
 
   /** Implement this to add the tool-specific arguments */
   protected def addFgStrArgs(buffer: ListBuffer[Any]): Unit

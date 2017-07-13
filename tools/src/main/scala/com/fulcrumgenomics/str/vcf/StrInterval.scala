@@ -33,14 +33,14 @@ import htsjdk.variant.variantcontext.{Allele, VariantContext}
 
 object StrInterval {
   object StrAllele extends LazyLogging {
-    val NoCall: StrAllele = StrAllele(Allele.NO_CALL, 0, 0)
+    val NoCall: StrAllele = StrAllele(Allele.NO_CALL, 0, 0, 0)
 
-    def toCalls(str: StrInterval, ctx: VariantContext, counts: Seq[Int]): Seq[StrAllele] = {
+    def toCalls(str: StrInterval, ctx: VariantContext, counts: Seq[Int], warn: Boolean = true): Seq[StrAllele] = {
       val alleles = ctx.getAlleles.toSeq
       require(alleles.length == counts.length, s"# of alleles '${alleles.length}' and # of counts '${counts.length}' did not match")
       val refAlleleLength = ctx.getReference.length()
 
-      if (str.unitLength * str.refLength != refAlleleLength) {
+      if (warn && str.unitLength * str.refLength != refAlleleLength) {
         logger.warning(s"Mismatch between reference repeat length in the interval list '${str.unitLength * str.refLength}' and vcf '$refAlleleLength' length")
       }
 
@@ -51,23 +51,31 @@ object StrInterval {
         // of bases different between the VCF's reference allele and this allele, then add that to the STR "reference"
         // length found in the interval list (unit-length times ref-length).
         val baseDiff     = allele.length() - refAlleleLength
-        val repeatLength = baseDiff + (str.refLength * str.unitLength)
-        StrAllele(allele=allele, repeatLength=repeatLength, count=count)
+        val alleleLength = baseDiff + (str.refLength * str.unitLength)
+        StrAllele(allele=allele, alleleLength=alleleLength, count=count, str=str)
       }.sortBy(-_.count)
+    }
+
+    def apply(allele: Allele, alleleLength: Int, count: Int, str: StrInterval): StrAllele = {
+      StrAllele(allele, alleleLength, count, str.unitLength)
     }
   }
 
   /** A single STR allele, including the number of repeats and count */
- case class StrAllele(allele: Allele, repeatLength: Int, count: Int) {
-    def toGenotype(unitLength: Int): String = {
+ case class StrAllele(allele: Allele, alleleLength: Int, count: Int, unitLength: Int) {
+    def repeatLength: Double = {
+      if (Allele.NO_CALL == allele) 0 else this.alleleLength / this.unitLength.toDouble
+    }
+
+    def toGenotype: String = {
       if (Allele.NO_CALL == allele) {
         "0"
       }
-      else if (repeatLength % unitLength == 0) {
-        f"${repeatLength / unitLength}%d"
+      else if (alleleLength % unitLength == 0) {
+        f"${alleleLength / unitLength}%d"
       }
       else {
-        f"${repeatLength / unitLength.toDouble}%.2f"
+        f"$repeatLength%.2f"
       }
     }
   }
@@ -86,11 +94,11 @@ object StrInterval {
         name       = ""
       )
 
-      interval.getName.split(',').toSeq match {
-        case Seq(unitLength, refLength, name) =>
+      interval.getName.split(",").toList match {
+        case unitLength :: refLength :: name :: Nil =>
           strInfo.copy(unitLength=unitLength.toInt, refLength=refLength.toInt, name=name)
-        case Seq(unitLength, refLength, name, known1, known2) =>
-          strInfo.copy(unitLength=unitLength.toInt, refLength=refLength.toInt, name=name, known1=Some(known1.toFloat), known2=Some(known2.toFloat))
+        case unitLength :: refLength :: name :: truthCalls =>
+          strInfo.copy(unitLength=unitLength.toInt, refLength=refLength.toInt, name=name, truthCalls=truthCalls.map(_.toFloat))
         case _ =>
           throw new IllegalArgumentException(s"Interval name improperly formatted for interval: $interval")
       }
@@ -99,24 +107,23 @@ object StrInterval {
 }
 
 case class StrInterval(chrom: String,
-                      start: Int,
-                      end: Int,
-                      unitLength: Int,
-                      refLength: Int,
-                      name: String,
-                      known1: Option[Float] = None,
-                      known2: Option[Float] = None)
+                       start: Int,
+                       end: Int,
+                       unitLength: Int,
+                       refLength: Int,
+                       name: String,
+                       truthCalls: Seq[Float] = Seq.empty)
   extends Interval(chrom, start, end, true, name) {
   override def toString: String  = productIterator.flatMap {
     case x: Option[_] => x
+    case x: Seq[_]    => if (x.isEmpty) None else Some(x.mkString(","))
     case x            => Some(x)
   }.mkString("\t")
 
   /** Outputs a formatted string with the given set of (called) alleles */
   def toLongString(alleles: Seq[StrAllele]): String = {
     val genotypes = alleles.map { allele =>
-      val genotype = allele.toGenotype(this.unitLength)
-      s"$genotype:${allele.count}"
+      s"${allele.toGenotype}:${allele.count}"
     }.mkString(",")
     s"$this\t$genotypes"
   }

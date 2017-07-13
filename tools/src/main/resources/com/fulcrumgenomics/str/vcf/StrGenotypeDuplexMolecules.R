@@ -19,10 +19,10 @@
 #################################################################################
 
 #################################################################################
-# R script to generate QC plots VcfToGenotypes
+# R script to generate QC plots StrGenotypeDuplexMolecules
 #
-# The input should be the *.info.txt file produced by VcfToGenotypes and the
-# output should be the pdf in which to store the plots.
+# The input should be the *.info.txt file produced by StrGenotypeDuplexMolecules
+#  and the output should be the pdf in which to store the plots.
 #################################################################################
 
 options(warn = -1) # Don't emit warnings, only errors

@@ -45,14 +45,14 @@ class StrGenotypeDuplexMoleculesTest extends UnitSpec {
   }
 
   "StrAllele.toGenotype" should "format as an integer if the # of repeat units is a multiple of the unit length" in {
-    StrAllele(null, 10, 1).toGenotype(10) shouldBe "1"
-    StrAllele(null, 10, 1).toGenotype(5)  shouldBe "2"
-    StrAllele(null, 9,  1).toGenotype(3)  shouldBe "3"
+    StrAllele(null, 10, 1, 10).toGenotype shouldBe "1"
+    StrAllele(null, 10, 1, 5).toGenotype  shouldBe "2"
+    StrAllele(null, 9,  1, 3).toGenotype  shouldBe "3"
   }
 
   it should "format as an float if the # of repeat units is not a multiple of the unit length" in {
-    StrAllele(null, 10, 1).toGenotype(3) shouldBe "3.33"
-    StrAllele(null, 10, 1).toGenotype(4) shouldBe "2.50"
+    StrAllele(null, 10, 1, 3).toGenotype shouldBe "3.33"
+    StrAllele(null, 10, 1, 4).toGenotype shouldBe "2.50"
   }
 
   private object Outputs {

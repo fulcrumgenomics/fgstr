@@ -31,14 +31,14 @@ import com.fulcrumgenomics.commons.CommonsDef._
 import com.fulcrumgenomics.commons.io.{Io, PathUtil}
 import com.fulcrumgenomics.sopt.{arg, clp}
 import com.fulcrumgenomics.str.tasks.HipStr.CreateRegionsBed
-import com.fulcrumgenomics.str.tasks.{FilterHaploidVcf, HipStr, ReadGroupPerDuplexMolecularId, StrGenotypeDuplexMolecules}
+import com.fulcrumgenomics.str.tasks._
 import dagr.core.cmdline.Pipelines
 import dagr.core.config.Configuration
 import dagr.core.tasksystem.Pipes.PipeWithNoResources
 import dagr.core.tasksystem.{Pipeline, Pipes, ShellCommand, SimpleInJvmTask}
 import dagr.tasks.DagrDef.{FilePath, PathPrefix, PathToBam, PathToFasta, PathToIntervals}
 import dagr.tasks.DataTypes.Vcf
-import dagr.tasks.ScatterGather.{Partitioner, Scatter}
+import dagr.tasks.ScatterGather.{Gather, Partitioner, Scatter}
 import dagr.tasks.misc.{DeleteFiles, IndexVcfGz}
 import dagr.tasks.picard.{GatherVcfs, UpdateVcfSequenceDictionary}
 import dagr.tasks.vc.FilterFreeBayesCalls.BgzipBinConfigKey
@@ -131,15 +131,27 @@ class GenotypeFromGroupedBam
         output       = dir.resolve(strName)
       )
     }
-    val gather = genotypes.gather { tasks: Seq[GenotypeStr] =>
+
+    val gatherVcfs = genotypes.gather { tasks: Seq[GenotypeStr] =>
       new GatherVcfs(
         in  = tasks.map { task => PathUtil.pathTo(task.output + ".vcf.gz") },
         out = vcf
       )
     }
+
+    val gatherMetrics = genotypes.gather { tasks: Seq[GenotypeStr] =>
+      new CollectStutterMetrics(
+        input       = vcf,
+        intervals   = intervals,
+        output      = output,
+        hipStrCalls = tasks.map(_.hipStrCalls)
+      )
+    }
+
     root ==> scatter
-    gather ==> new IndexVcfGz(vcf)
-    if (!keepIntermediates) gather ==> new DeleteFiles(dir)
+
+    gatherVcfs ==> new IndexVcfGz(vcf) ==> gatherMetrics
+    if (!keepIntermediates) gatherMetrics ==> new DeleteFiles(dir)
   }
 }
 
@@ -156,15 +168,17 @@ private class GenotypeStr
 
   require(intervalList.length == 1, s"Expected one STR interval, found ${intervalList.length}")
 
+  private def f(ext: String): FilePath = PathUtil.pathTo(output + ext)
+
+  val hipStrCalls = f(".filteredVcf.vcf.gz")
+
   def build(): Unit = {
-    def f(ext: String): FilePath = PathUtil.pathTo(output + ext)
 
     val bed           = f(".regions.bed")
     val midBam        = f(".mid.bam")
     val hipStrVcf     = f(".hipstr.vcf.gz")
     val hipStrVcfSS   = f(".hipstr.single_strand.vcf.gz")
     val updatedVcf    = f(".hipstr.updated.vcf.gz")
-    val filteredVcf   = f(".filteredVcf.vcf.gz")
     val filteredStats = f(".filteredVcf.stats.txt")
     val stutter       = f(".stutter.txt")
     val intervals     = f(".interval_list")
@@ -204,12 +218,12 @@ private class GenotypeStr
     // Filter the haploid calls
     val filterVcf = {
       val compressOutput = new ShellCommand(configureExecutableFromBinDirectory(BgzipBinConfigKey, "bgzip").toString, "-c") with PipeWithNoResources[Vcf,Vcf]
-      new FilterHaploidVcf(input=updatedVcf, stats=Some(filteredStats)) | compressOutput > filteredVcf
+      new FilterHaploidVcf(input=updatedVcf, stats=Some(filteredStats)) | compressOutput > hipStrCalls
     } withName "FilterHaploidVcf"
-    val indexFilteredVcf = new IndexVcfGz(filteredVcf)
+    val indexFilteredVcf = new IndexVcfGz(hipStrCalls)
 
     // merge the per-duplex calls into a single-sample call
-    val toFinalVcf    = new StrGenotypeDuplexMolecules(input=filteredVcf, output=output, ref=ref, intervals=intervals, perStrand=perStrand)
+    val toFinalVcf    = new StrGenotypeDuplexMolecules(input=hipStrCalls, output=output, ref=ref, intervals=intervals, perStrand=perStrand)
     root ==> toHipstrVcf ==> updateVcf ==> filterVcf ==> indexFilteredVcf ==> toFinalVcf
   }
 }

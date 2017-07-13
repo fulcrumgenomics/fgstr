@@ -27,7 +27,6 @@ package com.fulcrumgenomics.str.vcf
 import java.util
 
 import com.fulcrumgenomics.FgBioDef._
-import com.fulcrumgenomics.FgBioDef.IteratorToJavaCollectionsAdapter
 import com.fulcrumgenomics.cmdline.ClpGroups
 import com.fulcrumgenomics.commons.io.{Io, PathUtil}
 import com.fulcrumgenomics.commons.util.LazyLogging
@@ -37,14 +36,14 @@ import com.fulcrumgenomics.str.vcf.StrInterval._
 import com.fulcrumgenomics.util.{ProgressLogger, Rscript}
 import htsjdk.samtools.SAMSequenceDictionary
 import htsjdk.samtools.reference.ReferenceSequenceFileWalker
-import htsjdk.samtools.util.{Interval, IntervalList, StringUtil}
+import htsjdk.samtools.util.StringUtil
 import htsjdk.variant.variantcontext._
 import htsjdk.variant.variantcontext.writer.{Options, VariantContextWriter, VariantContextWriterBuilder}
 import htsjdk.variant.vcf._
 
+import scala.collection.mutable
 import scala.collection.mutable.ListBuffer
 import scala.util.Failure
-import scala.collection.mutable
 
 @clp(group=ClpGroups.VcfOrBcf, description=
   """
@@ -156,7 +155,7 @@ class StrGenotypeDuplexMolecules
                 true
               }
             } match {
-              case Seq()     => val noCall = StrAllele(Allele.NO_CALL, 0, 0); Seq(noCall, noCall)
+              case Seq()     => val noCall = StrAllele.NoCall; Seq(noCall, noCall)
               case Seq(call) => Seq(call, call)
               case calls     => calls
             }
@@ -166,8 +165,7 @@ class StrGenotypeDuplexMolecules
           addFormatFields(
             ctx        = ctx,
             builder    = genotypeBuilder,
-            calls      = genotypeCalls,
-            unitLength = str.unitLength
+            calls      = genotypeCalls
           )
 
           // build the variant context
@@ -245,7 +243,7 @@ class StrGenotypeDuplexMolecules
   }
 
   /** Adds various format fields that can be easily aggregated across genotypes (ex. DP, GB, PDP, DSTUTTER, DFLANKINDEL) */
-  private def addFormatFields(ctx: VariantContext, builder: GenotypeBuilder, calls: Seq[StrAllele], unitLength: Int): Unit = {
+  private def addFormatFields(ctx: VariantContext, builder: GenotypeBuilder, calls: Seq[StrAllele]): Unit = {
     val alleles = calls.map(_.allele)
 
     val gbs: ListBuffer[Option[Int]] = ListBuffer(alleles.map(_ => None):_*)
@@ -257,18 +255,20 @@ class StrGenotypeDuplexMolecules
     val allelesToDepth: mutable.Map[Allele, Int] = mutable.HashMap[Allele, Int]()
     val altAlleleCounts = ctx.getAttributeAsIntList("AC", 0)
     val refAlleleIndex  = ctx.getAlleleIndex(ctx.getReference)
-    alleles.foreach { allele =>
-       if (allele.isReference) {
-         allelesToDepth(allele) = ctx.getAttributeAsInt("REFAC", 0)
-       }
-       else {
-         val alleleIndex = {
-           val idx = ctx.getAlleleIndex(allele)
-           if (idx < refAlleleIndex) idx
-           else idx - 1
-         }
-         allelesToDepth(allele) = altAlleleCounts.get(alleleIndex)
-       }
+    if (altAlleleCounts.nonEmpty) {
+      alleles.foreach { allele =>
+        if (allele.isReference) {
+          allelesToDepth(allele) = ctx.getAttributeAsInt("REFAC", 0)
+        }
+        else {
+          val alleleIndex = {
+            val idx = ctx.getAlleleIndex(allele)
+            if (idx < refAlleleIndex) idx
+            else idx - 1
+          }
+          allelesToDepth(allele) = altAlleleCounts.get(alleleIndex)
+        }
+      }
     }
 
     // DP and AD
@@ -312,12 +312,12 @@ class StrGenotypeDuplexMolecules
 
     // set them
     builder.DP(dp)
-    builder.AD(ad)
+    if (dp > 0) builder.AD(ad)
     if (gbs.forall(_.isDefined)) builder.attribute("GB", gbs.flatten.toIterator.toJavaList)
     builder.attribute("PDP", pdps.toIterator.toJavaList)
     builder.attribute("DSTUTTER", dStutter)
     builder.attribute("DFLANKINDEL", dFlankIndel)
-    builder.attribute("STR_GT", calls.map(_.repeatLength / unitLength.toDouble).toIterator.toJavaList)
+    builder.attribute("STR_GT", calls.map(_.repeatLength).toIterator.toJavaList)
   }
 
   /** Creates the output VCF writer */
