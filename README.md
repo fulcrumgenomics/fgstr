@@ -45,14 +45,13 @@ The name field should contain a comma list of values as follows:
   2. the reference genome number of repeat units (ex. `4` for the tri-nucleotide repeat `TCATCATCATCA`).
   3. the name of the STR (ex. `D1S1656`)
  
-Optionally, two extra values can be appended:
-
-  4. optionally, the expected (known or truth) number of repeat units for allele #1
-  5. optionally, the expected (known or truth) number of repeat units for allele #2
+Optionally, additional values can be appended to the name for one or more expected truth alleles.  
+For example, a known haploid call should have one extra value, a known diploid call should have two extra value, and so on
   
 An example name field with the optionals is `4,17,D1S1656,9,10` and without is `4,17,D1S1656`.
 
-For example, below is an interval list with (1) the header (sequence dictionary) omitted, and (2) dummy values for the expected/known/truth number of repeat units:
+For example, below is an interval list with (1) the header (sequence dictionary) omitted, and dummy values for the expected/known/truth number of repeat units.  
+Notice that `D12S391` is tri-allelic.
 
 ```
 1   230905363   230905429   +   4,17,D1S1656,9,10
@@ -70,7 +69,7 @@ For example, below is an interval list with (1) the header (sequence dictionary)
 10  131092509   131092559   +   4,13,D10S1248,9,10
 11  2192319 2192345 +   4,7,TH01,6,9.3
 12  6093144 6093210 +   4,17,vWA,9,10
-12  12449955    12450029    +   4,19,D12S391,9,10
+12  12449955    12450029    +   4,19,D12S391,9,10,11
 13  82722161    82722203    +   4,11,D13S317,9,10
 15  97374246    97374269    +   6,5,PentaE,9,10
 16  86386309    86386351    +   4,11,D16S539,9,10
