@@ -80,7 +80,7 @@ lazy val htsjdkAndPicardExcludes = Seq(
   ExclusionRule(organization="com.google.cloud.genomics")
 )
 
-val dagrVersion = "0.2.0"
+val dagrVersion = "0.2.1-SNAPSHOT"
 
 lazy val pipelines = Project(id="fgstr-pipeline", base=file("pipelines"))
   .settings(description := "dagr pipelines for processing STR duplex sequencing data.")

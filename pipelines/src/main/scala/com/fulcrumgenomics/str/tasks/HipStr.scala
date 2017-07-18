@@ -30,7 +30,7 @@ import java.nio.file.{Path, Paths}
 import com.fulcrumgenomics.commons.io.{Io, PathUtil}
 import com.fulcrumgenomics.str.tasks.HipStr.PathToBed
 import dagr.core.config.Configuration
-import dagr.core.execsystem.{Cores, Memory}
+import dagr.api.models.{Cores, Memory}
 import dagr.core.tasksystem.{FixedResources, ProcessTask, SimpleInJvmTask}
 import dagr.tasks.DagrDef.{FilePath, PathToBam, PathToFasta, PathToVcf}
 import com.fulcrumgenomics.commons.CommonsDef._

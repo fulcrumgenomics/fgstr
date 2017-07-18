@@ -26,7 +26,7 @@
 package com.fulcrumgenomics.str.tasks
 
 import com.fulcrumgenomics.FgBioDef.{FilePath, PathToVcf}
-import dagr.core.execsystem.{Cores, Memory}
+import dagr.api.models.{Cores, Memory}
 import dagr.core.tasksystem.{FixedResources, PipeOut, ProcessTask}
 import dagr.tasks.DataTypes.Vcf
 

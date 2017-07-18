@@ -28,9 +28,9 @@ package com.fulcrumgenomics.str.tasks
 import java.nio.file.Path
 
 import dagr.core.config.Configuration
-import dagr.core.execsystem.{Cores, Memory}
 import dagr.core.tasksystem.{FixedResources, ProcessTask}
 import dagr.tasks.JarTask
+import dagr.api.models.{Cores, Memory}
 
 import scala.collection.mutable
 import scala.collection.mutable.ListBuffer
