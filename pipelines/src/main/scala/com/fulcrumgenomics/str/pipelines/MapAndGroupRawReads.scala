@@ -28,11 +28,12 @@ package com.fulcrumgenomics.str.pipelines
 import com.fulcrumgenomics.sopt.{arg, clp}
 import com.fulcrumgenomics.commons.io.Io
 import dagr.core.cmdline.Pipelines
-import dagr.core.tasksystem.{Pipeline, ShellCommand}
+import dagr.core.tasksystem.Pipeline
 import dagr.tasks.DagrDef._
 import dagr.tasks.bwa.Bwa
 import dagr.tasks.fgbio._
 import dagr.tasks.picard._
+import htsjdk.samtools.SAMFileHeader.SortOrder
 
 @clp(
   description =
@@ -67,15 +68,28 @@ class MapAndGroupRawReads
     val pre = output.getFileName
     val mappedRaw   = dir.resolve(pre + ".raw.aligned.bam")
     val grouped     = dir.resolve(pre + ".grouped.bam")
+    val sorted      = dir.resolve(pre + ".grouped.sorted.bam")
     val familySizes = dir.resolve(pre + ".family_sizes.txt")
 
     // Make the grouped and consensus BAMs
-    val bwaRaw    = Bwa.bwaMemStreamed(unmappedBam=unmappedBam, mappedBam=mappedRaw, ref=ref, samToFastqCores=0, bwaMemMemory="6G")
-    val group     = new GroupReadsByUmi(in=mappedRaw, out=grouped, familySizeOut=Some(familySizes),
+    val bwaRaw            = Bwa.bwaMemStreamed(unmappedBam=unmappedBam, mappedBam=mappedRaw, ref=ref, samToFastqCores=0, bwaMemMemory="6G")
+    val group             = new GroupReadsByUmi(in=mappedRaw, out=grouped, familySizeOut=Some(familySizes),
       rawTag=Some(umiTag), minMapQ=Some(minMapQ), strategy=AssignmentStrategy.Paired, edits=Some(edits))
+
+    // Collect some metrics on the grouped BAM
     val dsMetrics         = new CollectDuplexSeqMetrics(input=grouped, output=dir.resolve(pre), intervals=Some(intervals))
     val dsMetricsAllReads = new CollectDuplexSeqMetrics(input=grouped, output=dir.resolve(pre + ".all_reads"), intervals=None)
+    val validateGrouped   = new ValidateSamFile(in=grouped, prefix=None, ref=ref)
 
-    root ==> bwaRaw ==> group ==> (dsMetrics :: dsMetricsAllReads :: new DeleteBam(mappedRaw))
+    // Collect some metrics on a coordinate sorted BAM
+    val sortSam           = new SortSam(in=grouped, out=sorted, sortOrder=SortOrder.coordinate)
+    val byCycleMetrics    = new CollectBaseDistributionByCycle(in=sorted, prefix=None)
+    val hsMetrics         = new CollectHsMetrics(in=sorted, ref=ref, targets=intervals)
+    val asmMetrics        = new CollectAlignmentSummaryMetrics(in=sorted, ref=ref)
+    val yieldMetrics      = new CollectQualityYieldMetrics(in=sorted)
+    val artifactMetrics   = new CollectSequencingArtifactMetrics(in=sorted, ref=ref, intervals=Some(intervals))
+
+    root ==> bwaRaw ==> group ==> (sortSam :: dsMetrics :: dsMetricsAllReads :: validateGrouped :: new DeleteBam(mappedRaw))
+    sortSam ==> (byCycleMetrics :: hsMetrics :: asmMetrics :: yieldMetrics :: artifactMetrics)
   }
 }
