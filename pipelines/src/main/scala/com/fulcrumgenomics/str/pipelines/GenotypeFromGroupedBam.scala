@@ -166,6 +166,8 @@ private class GenotypeStr
   val suffix: Option[String] = None
 ) extends Pipeline(suffix=Some("." + output.getFileName)) with Configuration {
 
+  name = name + "." + output.getFileName
+
   require(intervalList.length == 1, s"Expected one STR interval, found ${intervalList.length}")
 
   private def f(ext: String): FilePath = PathUtil.pathTo(output + ext)
