@@ -7,6 +7,7 @@ import dagr.core.tasksystem.Pipeline
 import dagr.tasks.DagrDef.{PathPrefix, PathToBam, PathToFasta, PathToIntervals}
 import dagr.tasks.picard.{CollectAlignmentSummaryMetrics, CollectHsMetrics, CollectSequencingArtifactMetrics}
 
+@deprecated(message="Metrics computed in MapAndGroupRawReads", since="Jul-20-2017")
 @clp(
   description =
     """

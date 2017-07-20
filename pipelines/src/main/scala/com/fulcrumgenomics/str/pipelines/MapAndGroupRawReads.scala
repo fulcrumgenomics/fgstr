@@ -33,7 +33,6 @@ import dagr.tasks.DagrDef._
 import dagr.tasks.bwa.Bwa
 import dagr.tasks.fgbio._
 import dagr.tasks.picard._
-import htsjdk.samtools.SAMFileHeader.SortOrder
 
 @clp(
   description =
@@ -58,17 +57,18 @@ class MapAndGroupRawReads
 )
   extends Pipeline(Some(output.getParent)) {
 
+  private val dir = output.getParent
+  private val pre = output.getFileName
+  val groupedBamFile: PathToBam = dir.resolve(pre + ".grouped.bam")
+
   override def build(): Unit = {
 
     Io.assertReadable(unmappedBam)
     Io.assertCanWriteFile(output, parentMustExist=false)
 
     // Files that we're going to create
-    val dir = output.getParent
-    val pre = output.getFileName
     val mappedRaw   = dir.resolve(pre + ".raw.aligned.bam")
-    val grouped     = dir.resolve(pre + ".grouped.bam")
-    val sorted      = dir.resolve(pre + ".grouped.sorted.bam")
+    val grouped     = groupedBamFile
     val familySizes = dir.resolve(pre + ".family_sizes.txt")
 
     // Make the grouped and consensus BAMs
@@ -82,14 +82,13 @@ class MapAndGroupRawReads
     val validateGrouped   = new ValidateSamFile(in=grouped, prefix=None, ref=ref)
 
     // Collect some metrics on a coordinate sorted BAM
-    val sortSam           = new SortSam(in=grouped, out=sorted, sortOrder=SortOrder.coordinate)
-    val byCycleMetrics    = new CollectBaseDistributionByCycle(in=sorted, prefix=None)
-    val hsMetrics         = new CollectHsMetrics(in=sorted, ref=ref, targets=intervals)
-    val asmMetrics        = new CollectAlignmentSummaryMetrics(in=sorted, ref=ref)
-    val yieldMetrics      = new CollectQualityYieldMetrics(in=sorted)
-    val artifactMetrics   = new CollectSequencingArtifactMetrics(in=sorted, ref=ref, intervals=Some(intervals))
+    val byCycleMetrics    = new CollectBaseDistributionByCycle(in=mappedRaw, prefix=None)
+    val hsMetrics         = new CollectHsMetrics(in=mappedRaw, ref=ref, targets=intervals)
+    val asmMetrics        = new CollectAlignmentSummaryMetrics(in=mappedRaw, ref=ref)
+    val yieldMetrics      = new CollectQualityYieldMetrics(in=mappedRaw)
+    val artifactMetrics   = new CollectSequencingArtifactMetrics(in=mappedRaw, ref=ref, intervals=Some(intervals))
 
-    root ==> bwaRaw ==> group ==> (sortSam :: dsMetrics :: dsMetricsAllReads :: validateGrouped :: new DeleteBam(mappedRaw))
-    sortSam ==> (byCycleMetrics :: hsMetrics :: asmMetrics :: yieldMetrics :: artifactMetrics)
+    root ==> bwaRaw ==> group ==> (dsMetrics :: dsMetricsAllReads :: validateGrouped :: new DeleteBam(mappedRaw))
+    bwaRaw ==> (byCycleMetrics :: hsMetrics :: asmMetrics :: yieldMetrics :: artifactMetrics)
   }
 }

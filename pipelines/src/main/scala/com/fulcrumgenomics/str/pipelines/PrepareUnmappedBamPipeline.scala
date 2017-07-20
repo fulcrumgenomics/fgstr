@@ -74,16 +74,17 @@ class PrepareUnmappedBamPipeline
   require(fastq1.length == fastq2.length, "--fastq1 and --fastq2 must have the same # of arguments")
   require(platformUnit.length == fastq1.length || platformUnit.length == 1, "--platform-unit must have a single value or the same # of values as --fastq1")
 
+  private val prefix: String = output.getFileName.toString
+  private val out = output.getParent
+  val unmappedBamFile: PathPrefix = out.resolve(prefix + ".unmapped.bam")
+
   override def build(): Unit = {
-    val prefix: String = output.getFileName.toString
-    val out = output.getParent
     val tmpDir = tmp.getOrElse(out.resolve("tmp"))
 
     Io.assertReadable(fastq1 ++ fastq2)
     Io.assertCanWriteFile(out.resolve(prefix))
     Io.mkdirs(tmpDir)
 
-    val unmappedBamFile     = out.resolve(prefix + ".unmapped.bam")
     val platformUnits       = if (1 < platformUnit.length) platformUnit else List.tabulate(fastq1.length)(x => platformUnit.head)
     val inputs              = (fastq1, fastq2, platformUnits).zipped
     val toUnmappedBams      = ListBuffer[ProcessTask]()
