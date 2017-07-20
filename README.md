@@ -29,16 +29,16 @@ Java SE 8 is required.
 STR calling is performed by treating the reads from each duplex source molecule as a single haploid sample.  
 The two most frequently called set of alleles are called as the genotype for the sample.
 
-To analyze a single sample:
+To analyze a single sample use the `GenotypeWithDuplexSequencing` pipeline.  It automates the following three pipelines:
 
-1. Run `PrepareUnmappedBamPipeline` to create an unmapped BAM with extracted UMI information.
-2. Run `MapAndGroupRawReads` to map the raw reads and assign them each to a single source duplex molecule.
-3. Run `GenotypeFromGroupedBam` to generate STR genotypes from the grouped BAM. 
+1. `PrepareUnmappedBamPipeline`: create an unmapped BAM with extracted UMI information.
+2. `MapAndGroupRawReads`: map the raw reads and assign them each to a single source duplex molecule.
+3. `GenotypeFromGroupedBam`: generate STR genotypes from the grouped BAM. 
 This entails a) generating a BAM with a read-group per source molecule, b) running HipSTR to jointly call across all duplex source molecules (treating each source as a single haploid sample), and c) combining the per-molecule "genotypes" to produce a final genotype.
 
 ### Input Requirements
 
-The interval list provided to `GenotypeFromGroupedBam` requires a custom format.
+The interval list provided to both `GenotypeWithDuplexSequencing ` and `GenotypeFromGroupedBam` requires a custom format.
 The name field should contain a comma list of values as follows:
 
   1. the reference genome repeat unit length (ex. `3` for the tri-nucleotide repeat `TCATCATCATCA`).
