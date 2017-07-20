@@ -76,6 +76,7 @@ import scala.util.Failure
     |
     |The output will contain a single sample with a genotype call.  The INFO field will have list the allele
     |frequencies for all alleles observed, not just those in the final genotype.  The genotype will be chose as follows:
+    |0. Remove all alleles not seen at sufficient depth (see `--min-depth`).
     |1. Rank the haploid calls by descending frequency.
     |2. If the cumulative frequency of the called alleles is greater than or equal to the threshold
     |   (`--min-cumulative-frequency), go to step 4.
@@ -100,6 +101,7 @@ class StrGenotypeDuplexMolecules
   @arg(flag='S', doc="The output sample name") val sampleName: String = "Sample",
   @arg(flag='s', doc="Expect a sample per-strand of a duplex molecule") val perStrand: Boolean = false,
   @arg(flag='m', doc="Cumulative allele frequency threshold to require.") val minCumulativeFrequency: Double = 0.9,
+  @arg(flag='d', doc="Minimum depth to call an allele.") val minDepth: Int = 2,
   private val skipPlots: Boolean = false // for not plotting in tests
 ) extends FgStrTool with LazyLogging {
 
@@ -137,10 +139,10 @@ class StrGenotypeDuplexMolecules
 
           // get the count per allele
           val counts: Seq[Int] = alleles.map { allele => genotypes.map { genotype => genotype.countAllele(allele) }.sum }
-          val totalCounts: Int = counts.sum
 
           // get the new genotype
-          val allCalls = StrAllele.toCalls(str, ctx, counts)
+          val allCalls = StrAllele.toCalls(str, ctx, counts, minDepth)
+          val totalCounts: Int = allCalls.map(_.count).sum
 
           // choose the alleles
           val genotypeCalls = {

@@ -174,6 +174,7 @@ class StrGenotypeConcordance
 
           // Update the concordance counts
           val concordances = {
+            // TODO: order the concordances in the same order as calls
             // Match the calls with the knowns.  Iteratively find the pair of call and known that are the closest match.
             val knownsLeft       = ListBuffer[Double](knowns:_*)
             val callsLeft        = ListBuffer[Double](calls:_*)

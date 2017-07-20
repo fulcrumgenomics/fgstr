@@ -87,11 +87,12 @@ class StrGenotypeDuplexMoleculesTest extends UnitSpec {
                   ref: PathToFasta=this.ref,
                   minCumulativeFrequency: Double = 0.9,
                   perStrand: Boolean = false,
+                  minDepth: Int = 1,
                   skipPlots: Boolean = true): Outputs = {
     val input  = builder.toTempFile()
     val output = makeTempFile("test.", ".prefix")
     val tool   = new StrGenotypeDuplexMolecules(input=input, output=output, intervals=intervals, ref=ref,
-      minCumulativeFrequency=minCumulativeFrequency, perStrand=perStrand, skipPlots=skipPlots)
+      minCumulativeFrequency=minCumulativeFrequency, perStrand=perStrand, minDepth=minDepth, skipPlots=skipPlots)
     val logging = executeFgstrTool(tool)
     Outputs(output)
   }
@@ -262,7 +263,7 @@ class StrGenotypeDuplexMoleculesTest extends UnitSpec {
     getStrGenotype(genotype) should contain theSameElementsInOrderAs Seq(1.0, 2.0)
   }
 
-  it should "support the --min-cumulative-frequency option" in {
+  private object AlleleFilterExample {
     val builder = new VariantContextSetBuilder(sampleNames=Seq.range(1, 7).map(i => s"S-$i"))
     val alleles = List("AAA", "AAAAAA", "AAAAAAAAA")
 
@@ -274,9 +275,7 @@ class StrGenotypeDuplexMoleculesTest extends UnitSpec {
     builder.addVariant(refIdx=0, start=1, variantAlleles=alleles, genotypeAlleles=List(alleles(2)), sampleName=Some("S-5"))
     builder.addVariant(refIdx=0, start=1, variantAlleles=alleles, genotypeAlleles=List(alleles(1)), sampleName=Some("S-6"))
 
-    // MCF 0.5 -> called homozygous ref
-    {
-      val outputs  = run(builder, minCumulativeFrequency=0.5)
+    def assertHomRef(outputs: Outputs): Unit = {
       val variants = outputs.variants
 
       variants.length shouldBe 1
@@ -288,9 +287,7 @@ class StrGenotypeDuplexMoleculesTest extends UnitSpec {
       getStrGenotype(genotype) should contain theSameElementsInOrderAs Seq(1.0, 1.0)
     }
 
-    // MCF 0.75 -> called heterozygous ref/alt
-    {
-      val outputs  = run(builder, minCumulativeFrequency=0.75)
+    def assertHet(outputs: Outputs): Unit = {
       val variants = outputs.variants
 
       variants.length shouldBe 1
@@ -302,9 +299,7 @@ class StrGenotypeDuplexMoleculesTest extends UnitSpec {
       getStrGenotype(genotype) should contain theSameElementsInOrderAs Seq(1.0, 3.0)
     }
 
-    // MCF 0.9 -> called triallelic
-    {
-      val outputs  = run(builder, minCumulativeFrequency=1.0)
+    def assertTriallelic(outputs: Outputs): Unit = {
       val variants = outputs.variants
 
       variants.length shouldBe 1
@@ -315,6 +310,50 @@ class StrGenotypeDuplexMoleculesTest extends UnitSpec {
       genotype.getPloidy shouldBe 3
       genotype.getAlleles.map(_.getBaseString).toSeq should contain theSameElementsAs List(alleles(0), alleles(2), alleles(1))
       getStrGenotype(genotype) should contain theSameElementsInOrderAs Seq(1.0, 3.0, 2.0)
+    }
+  }
+
+  it should "support the --min-cumulative-frequency option" in {
+    val builder = AlleleFilterExample.builder
+
+    // MCF 0.5 -> called homozygous ref
+    {
+      val outputs  = run(builder, minCumulativeFrequency=0.5)
+      AlleleFilterExample.assertHomRef(outputs)
+    }
+
+    // MCF 0.75 -> called heterozygous ref/alt
+    {
+      val outputs  = run(builder, minCumulativeFrequency=0.75)
+      AlleleFilterExample.assertHet(outputs)
+    }
+
+    // MCF 0.9 -> called triallelic
+    {
+      val outputs  = run(builder, minCumulativeFrequency=1.0)
+      AlleleFilterExample.assertTriallelic(outputs)
+    }
+  }
+
+   it should "support the --min-depth option" in {
+    val builder = AlleleFilterExample.builder
+
+    // min depth 1 -> called triallelic
+    {
+      val outputs  = run(builder, minCumulativeFrequency=1.0, minDepth=1)
+      AlleleFilterExample.assertTriallelic(outputs)
+    }
+
+    // min depth 2 -> called heterozygous ref/alt
+    {
+      val outputs  = run(builder, minCumulativeFrequency=1.0, minDepth=2)
+      AlleleFilterExample.assertHet(outputs)
+    }
+
+     // min depth 3 -> called homozygous ref
+    {
+      val outputs  = run(builder, minCumulativeFrequency=1.0, minDepth=3)
+      AlleleFilterExample.assertHomRef(outputs)
     }
   }
 

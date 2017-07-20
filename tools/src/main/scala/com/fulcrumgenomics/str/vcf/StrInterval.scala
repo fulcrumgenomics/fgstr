@@ -35,7 +35,7 @@ object StrInterval {
   object StrAllele extends LazyLogging {
     val NoCall: StrAllele = StrAllele(Allele.NO_CALL, 0, 0, 0)
 
-    def toCalls(str: StrInterval, ctx: VariantContext, counts: Seq[Int], warn: Boolean = true): Seq[StrAllele] = {
+    def toCalls(str: StrInterval, ctx: VariantContext, counts: Seq[Int], minDepth: Int = 1, warn: Boolean = true): Seq[StrAllele] = {
       val alleles = ctx.getAlleles.toSeq
       require(alleles.length == counts.length, s"# of alleles '${alleles.length}' and # of counts '${counts.length}' did not match")
       val refAlleleLength = ctx.getReference.length()
@@ -45,7 +45,7 @@ object StrInterval {
       }
 
       alleles.zip(counts)
-        .filter(_._2 > 0) // ignore zero counts
+        .filter(_._2 >= minDepth) // ignore zero counts
         .map { case (allele, count) =>
         // NB: the VCF's reference allele may not have the same length as the STR "reference" length, so we calculate the #
         // of bases different between the VCF's reference allele and this allele, then add that to the STR "reference"
