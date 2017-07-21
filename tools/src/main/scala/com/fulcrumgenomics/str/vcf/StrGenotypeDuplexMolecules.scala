@@ -164,11 +164,14 @@ class StrGenotypeDuplexMolecules
           }
           val genotypeBuilder = new GenotypeBuilder(sampleName, genotypeCalls.map(_.allele).toIterator.toJavaList)
 
-          addFormatFields(
-            ctx        = ctx,
-            builder    = genotypeBuilder,
-            calls      = genotypeCalls
-          )
+          if (!genotypeCalls.contains(StrAllele.NoCall)) {
+            // NB: it would be nice to include format fields for no calls, but that can be done at a later date.
+            addFormatFields(
+              ctx     = ctx,
+              builder = genotypeBuilder,
+              calls   = genotypeCalls
+            )
+          }
 
           // build the variant context
           ctxBuilder.genotypes(genotypeBuilder.make())

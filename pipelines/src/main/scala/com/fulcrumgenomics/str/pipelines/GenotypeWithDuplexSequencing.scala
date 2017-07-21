@@ -108,7 +108,8 @@ class GenotypeWithDuplexSequencing
       output = output,
       minReads = minReads,
       perStrand = perStrand,
-      keepIntermediates = keepIntermediates
+      keepIntermediates = keepIntermediates,
+      tmp = tmp
     )
 
     root ==> prepare ==> mapAndGroup ==> genotype

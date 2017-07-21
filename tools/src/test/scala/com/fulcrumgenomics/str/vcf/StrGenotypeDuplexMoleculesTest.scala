@@ -78,8 +78,14 @@ class StrGenotypeDuplexMoleculesTest extends UnitSpec {
   }
 
   private def getStrGenotype(genotype: Genotype): Seq[Double] = {
-    genotype.hasAnyAttribute("STR_GT") shouldBe true
-    genotype.getAttributeAsString("STR_GT", ".").split(',').map(_.toDouble)
+    if (genotype.isNoCall) {
+      genotype.hasAnyAttribute("STR_GT") shouldBe false
+      return Seq.empty
+    }
+    else {
+      genotype.hasAnyAttribute("STR_GT") shouldBe true
+      genotype.getAttributeAsString("STR_GT", ".").split(',').map(_.toDouble)
+    }
   }
 
   private def run(builder: VariantContextSetBuilder,
@@ -411,7 +417,7 @@ class StrGenotypeDuplexMoleculesTest extends UnitSpec {
     val genotype = variants.head.getGenotype(0)
     genotype.isNoCall shouldBe true
     genotype.getAlleles.map(_.getBaseString).toSeq should contain theSameElementsAs List(Allele.NO_CALL_STRING, Allele.NO_CALL_STRING)
-    getStrGenotype(genotype) should contain theSameElementsInOrderAs Seq(0.0, 0.0)
+    getStrGenotype(genotype) should contain theSameElementsInOrderAs Seq()
   }
 
   // TODO: add a test for aggregating genotype fields DP, GB, PDP, DSTUTTER, DFLANKINDEL from HipSTR

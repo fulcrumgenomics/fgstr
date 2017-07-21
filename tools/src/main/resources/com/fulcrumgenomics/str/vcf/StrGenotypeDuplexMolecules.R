@@ -52,6 +52,7 @@ for (i in 1:nrow(data)) {
     refNumUnits = row[5]
     strName     = row[[6]]
     known       = c()
+    rowData     = NA
     for (j in 7:ncol(row)) {
         if (grepl(":", row[[j]])) {
             stopifnot(j == ncol(row))
@@ -66,23 +67,31 @@ for (i in 1:nrow(data)) {
     # and observation counts
     numUnits = c()
     counts   = c()
-    tuples = strsplit(rowData, ",")[[1]]
-    for (j in 1:length(tuples)) {
-        tuple = tuples[j]
-        tupleData = strsplit(tuple, ":")[[1]];
-        numUnits[j] = as.numeric(tupleData[1])
-        counts[j]   = as.numeric(tupleData[2])
+    print(rowData)
+    if (!is.na(rowData)) {
+        tuples = strsplit(rowData, ",")[[1]]
+        for (j in 1:length(tuples)) {
+            tuple = tuples[j]
+            tupleData = strsplit(tuple, ":")[[1]];
+            numUnits[j] = as.numeric(tupleData[1])
+            counts[j]   = as.numeric(tupleData[2])
+        }
+        df = data.frame(as.numeric(numUnits), as.numeric(counts))
+        p = ggplot(df) + aes(x=numUnits) +
+            geom_point(aes(y=counts, color=counts)) +
+            scale_x_continuous() +
+            scale_fill_manual(values=fgcolors) +
+            scale_color_gradient(low=fgblue, high=fggreen) +
+            labs(x="# of Repeat Units", y="Raw counts", title=paste(strName, " (", chromosome, ":", start, "-", end, " motif of length ", unitLength, ")", sep="")) +
+            theme(plot.title = element_text(hjust = 0.5), legend.title=element_blank())
+        for (k in known) {
+            p = p + geom_vline(xintercept = k, linetype="dotted")
+        }
     }
-    df = data.frame(numUnits, counts)
-    p = ggplot(df) + aes(x=numUnits) +
-        geom_point(aes(y=counts, color=counts)) +
-        scale_x_continuous() +
-        scale_fill_manual(values=fgcolors) +
-        scale_color_gradient(low=fgblue, high=fggreen) +
-        labs(x="# of Repeat Units", y="Raw counts", title=paste(strName, " (", chromosome, ":", start, "-", end, " motif of length ", unitLength, ")", sep="")) +
-        theme(plot.title = element_text(hjust = 0.5), legend.title=element_blank())
-    for (k in known) {
-        p = p + geom_vline(xintercept = k, linetype="dotted")
+    else {
+        p = ggplot() +
+            labs(x="# of Repeat Units", y="Raw counts", title=paste(strName, " (", chromosome, ":", start, "-", end, " motif of length ", unitLength, ")", sep="")) +
+            theme(plot.title = element_text(hjust = 0.5), legend.title=element_blank())
     }
     print(p)
 }
