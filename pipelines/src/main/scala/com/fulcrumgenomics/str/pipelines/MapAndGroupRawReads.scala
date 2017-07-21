@@ -88,7 +88,8 @@ class MapAndGroupRawReads
     val yieldMetrics      = new CollectQualityYieldMetrics(in=mappedRaw)
     val artifactMetrics   = new CollectSequencingArtifactMetrics(in=mappedRaw, ref=ref, intervals=Some(intervals))
 
-    root ==> bwaRaw ==> group ==> (dsMetrics :: dsMetricsAllReads :: validateGrouped :: new DeleteBam(mappedRaw))
-    bwaRaw ==> (byCycleMetrics :: hsMetrics :: asmMetrics :: yieldMetrics :: artifactMetrics)
+    val deleteRawBam      =  new DeleteBam(mappedRaw)
+    root ==> bwaRaw ==> group ==> (dsMetrics :: dsMetricsAllReads :: validateGrouped :: deleteRawBam)
+    bwaRaw ==> (byCycleMetrics :: hsMetrics :: asmMetrics :: yieldMetrics :: artifactMetrics) ==> deleteRawBam
   }
 }
