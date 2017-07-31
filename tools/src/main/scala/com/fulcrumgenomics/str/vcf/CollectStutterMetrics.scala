@@ -129,7 +129,6 @@ class CollectStutterMetrics
 
     vcfIn.safelyClose()
 
-    /*
     if (!skipPlots) {
       logger.info("Plotting")
       val pdf = PathUtil.pathTo(output + ".stutter.pdf")
@@ -141,7 +140,6 @@ class CollectStutterMetrics
     else {
       logger.warning("Skipping plots")
     }
-    */
   }
 
   // find the one closes to zero

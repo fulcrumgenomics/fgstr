@@ -68,21 +68,32 @@ allRawY       = as.numeric(consensusData[nrow(consensusData),startCol:ncol(conse
 allConsensusY = allConsensusY / sum(allConsensusY)
 allRawY       = allRawY / sum(allRawY)
 
-alleleTable <- function(allAlleles, name) {
+alleleTable <- function(allAlleles, name, alleleType) {
     data = allAlleles[allAlleles[,1] == name, startCol:ncol(allAlleles)]
     data = data[1,!is.na(data[1,])]  # remove NAs
     data = data[1, data[1,] != ""]  # remove blanks
 
-    alleles = data[1,seq(from=1, to=ncol(data), by=3)]
-    repeatLengths = data[1,seq(from=2, to=ncol(data), by=3)]
-    counts = data[1,seq(from=3, to=ncol(data), by=3)]
+    to = max(1, ncol(data))
+
+    alleles = data[1,seq(from=min(1, to), to=to, by=3)]
+    repeatLengths = data[1,seq(from=min(2, to), to=to, by=3)]
+    counts = data[1,seq(from=min(3, to), to=to, by=3)]
 
     alleles = as.character(alleles)
     repeatLengths = as.numeric(repeatLengths)
     counts = as.numeric(counts)
 
-    df = cbind(alleles, repeatLengths, counts)
-    colnames(df) = c("Allele", "Repeat #", "Counts")
+    if (all(alleles == "Not Accessible")) {
+        df = cbind(repeatLengths, counts)
+        colnames(df) = c("Repeat #", paste("Counts (", alleleType, ")", sep=""))
+    }
+    else {
+        df = cbind(alleles, repeatLengths, counts)
+        colnames(df) = c(paste("Allele (", alleleType, ")", sep=""), "Repeat #", "Counts")
+    }
+    if (nrow(df) > 1) {
+        df = df[order(-repeatLengths), ]
+    }
 
     # TODO: total counts on the bottom row
     return (df)
@@ -104,8 +115,9 @@ for (i in 2:(nrow(consensusData)-1)) {
     stopifnot(rawData[i,1] == name)
     print(paste("Plotting ", name, " (", (i-1), "/", num_strs, ")", sep=""))
 
-    cAlleles = alleleTable(consensusAlleles, name)
-    rAlleles = alleleTable(rawAlleles, name)
+    # Get the allele counts for each repeat length for the raw and conesnsus data
+    cAlleles = alleleTable(consensusAlleles, name, "consensus calls")
+    rAlleles = alleleTable(rawAlleles, name, "raw reads")
 
     consensusY = as.numeric(consensusData[i,startCol:ncol(consensusData)])
     rawY       = as.numeric(rawData[i,startCol:ncol(rawData)])
@@ -130,10 +142,16 @@ for (i in 2:(nrow(consensusData)-1)) {
             labels=c("STR raw reads", "All raw reads", "STR consensus calls", "All consensus calls"),
             values=c(fgblue, fggreen, fgred, fpurple)
         ) +
-        annotation_custom(tableGrob(cAlleles, theme=mytheme), xmin=xMin+1, xmax=xMin+1.5, ymin=0.0, ymax=1.0) +
-        annotation_custom(tableGrob(rAlleles, theme=mytheme), xmin=xMax-1., xmax=xMax,  ymin=0.0, ymax=1.0) +
-        labs(x="Stutter distance", y="Normalized counts", title=paste(name, " (", region, ")", sep="")) +
+        labs(x="Stutter distance (log10 scaled)", y="Normalized counts", title=paste(name, " (", region, ")", sep="")) +
         theme(plot.title = element_text(hjust = 0.5), legend.title=element_blank())
+
+    if (nrow(rAlleles) > 0) {
+        p = p + annotation_custom(tableGrob(rAlleles, theme=mytheme), xmin=xMin+1, xmax=xMin+1.5, ymin=0.0, ymax=1.0)
+    }
+    if (nrow(cAlleles) > 0) {
+        p = p + annotation_custom(tableGrob(cAlleles, theme=mytheme), xmin=xMax-1.5, xmax=xMax-0.5,  ymin=0.0, ymax=1.0)
+    }
+
     print(p)
 }
 dev.off()
