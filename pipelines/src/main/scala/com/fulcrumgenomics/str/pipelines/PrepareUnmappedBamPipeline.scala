@@ -52,7 +52,7 @@ object PrepareUnmappedBamPipeline extends Configuration {
   """
     |Pipeline to prepare an unmapped BAM from one or more pair of FASTQs.
     |
-    |The resulting unmapped BAM can be used in the DuplexConsensusPipeline.
+    |The resulting unmapped BAM can be used as input to the `MapAndGroupRawReads` pipeline.
   """)
 class PrepareUnmappedBamPipeline
 (
