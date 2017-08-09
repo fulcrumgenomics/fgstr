@@ -75,7 +75,7 @@ class GenotypeWithDuplexSequencing
   @arg(flag='s', doc="Call genotypes per-duplex-strand") val perStrand: Boolean = false,
   @arg(          doc="Keep intermediate files when genotyping.") val keepIntermediates: Boolean = false
 
-) extends Pipeline(outputDirectory=Some(output.getParent), suffix=Some("." + library)) {
+) extends Pipeline(outputDirectory=Some(output.getParent)) {
 
   def build(): Unit = {
 

@@ -97,12 +97,15 @@ class GenotypeFromGroupedBam
  @arg(flag='s', doc="Call genotypes per-duplex-strand") val perStrand: Boolean = false,
  @arg(flag='t', doc="Temporary directory in which to store intermediate results.") val tmp: Option[DirPath] = None,
  @arg(          doc="Keep intermediate files.") val keepIntermediates: Boolean = false
-) extends Pipeline(Some(output.getParent)) {
+) extends Pipeline(Some(output.getParent.getFileName)) {
 
   override def build(): Unit = {
+    val tmpDir = tmp.getOrElse(output.getParent.resolve("tmp").resolve("genotype"))
+
+    Io.mkdirs(tmpDir)
+
     Io.assertReadable(Seq(input, ref, intervals))
     Io.assertCanWriteFile(output)
-    tmp.foreach(Io.assertListable)
 
     val vcf = PathUtil.pathTo(this.output + ".vcf.gz")
 
@@ -114,10 +117,6 @@ class GenotypeFromGroupedBam
       tokens(2) // the name of the STR
     }
 
-    val dir = tmp match {
-      case Some(p) => Files.createTempDirectory(p, "genotype_from_grouped_bam.")
-      case None    => Files.createTempDirectory("genotype_from_grouped_bam.")
-    }
     val scatterer = new SplitStrIntervals(intervals=this.intervals)
     val scatter   = Scatter(scatterer)
     val genotypes = scatter.map { intervalList =>
@@ -128,7 +127,7 @@ class GenotypeFromGroupedBam
         intervalList = intervalList,
         minReads     = minReads,
         perStrand    = perStrand,
-        output       = dir.resolve(strName)
+        output       = tmpDir.resolve(strName)
       )
     }
 
@@ -151,7 +150,7 @@ class GenotypeFromGroupedBam
     root ==> scatter
 
     gatherVcfs ==> new IndexVcfGz(vcf) ==> gatherMetrics
-    if (!keepIntermediates) gatherMetrics ==> new DeleteFiles(dir)
+    if (!keepIntermediates) gatherMetrics ==> new DeleteFiles(tmpDir)
   }
 }
 
