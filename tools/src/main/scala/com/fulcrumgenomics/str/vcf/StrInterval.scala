@@ -42,6 +42,8 @@ object StrInterval {
 
       if (warn && str.unitLength * str.refLength != refAlleleLength) {
         logger.warning(s"Mismatch between reference repeat length in the interval list '${str.unitLength * str.refLength}' and vcf '$refAlleleLength' length")
+        // NB: this is important for when we trim the allele
+        require(str.unitLength * str.refLength < refAlleleLength, "Bug: allele length was longer in the interval list than in the vcf")
       }
 
       alleles.zip(counts)
@@ -52,17 +54,32 @@ object StrInterval {
         // length found in the interval list (unit-length times ref-length).
         val baseDiff     = allele.length() - refAlleleLength
         val alleleLength = baseDiff + (str.refLength * str.unitLength)
-        StrAllele(allele=allele, alleleLength=alleleLength, count=count, str=str)
+
+        StrAllele(allele, alleleLength, count, str.unitLength)
       }.sortBy(-_.count)
     }
 
-    def apply(allele: Allele, alleleLength: Int, count: Int, str: StrInterval): StrAllele = {
-      StrAllele(allele, alleleLength, count, str.unitLength)
+    def apply(allele: Allele, alleleLength: Int, count: Int, unitLength: Int): StrAllele = {
+      // Assume the allele is left-aligned, so that we trim any leading bases
+      val baseDiff = allele.length() - alleleLength
+      require(baseDiff >= 0, "Bug: base difference should be greater than or equal to zero")
+      val repeatAllele = Allele.create(allele.getBaseString.substring(baseDiff))
+
+      StrAllele(allele, repeatAllele, count, unitLength)
     }
   }
 
-  /** A single STR allele, including the number of repeats and count */
- case class StrAllele(allele: Allele, alleleLength: Int, count: Int, unitLength: Int) {
+  /** A single STR allele, including the number of repeats and count.
+    *
+    * NB: the `allele` member is the original allele from the VCF, and may contain flanking sequence, whereas the
+    * `normalizedAllele` is just the repeat sequence
+    * */
+ case class StrAllele(allele: Allele, repeatAllele: Allele, count: Int, unitLength: Int) {
+
+    def alleleLength: Int = {
+      if (Allele.NO_CALL == allele) 0 else repeatAllele.length
+    }
+
     def repeatLength: Double = {
       if (Allele.NO_CALL == allele) 0 else this.alleleLength / this.unitLength.toDouble
     }

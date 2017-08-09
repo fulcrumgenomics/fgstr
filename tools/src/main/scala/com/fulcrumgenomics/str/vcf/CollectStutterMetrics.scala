@@ -154,9 +154,13 @@ class CollectStutterMetrics
     vcfIn.query(str.chrom, str.start, str.end)
       .filter(ctx => ctx.getNoCallCount != ctx.getNSamples)
       .toSeq match {
-        case Seq(ctx) => if (ctx.getNSamples == 1) collectSingle(str, ctx, refCalls) else {
-          collectRaw(str, ctx, refCalls)
-        }
+        case Seq(ctx) =>
+          if (ctx.getNSamples == 1) {
+            collectConsensus(str, ctx, refCalls)
+          }
+          else {
+            collectRaw(str, ctx, refCalls)
+          }
         case calls    => StutterAndAlleleCounter.empty
       }
   }
@@ -174,23 +178,21 @@ class CollectStutterMetrics
           if (abs < 0) Math.ceil(abs) else Math.floor(abs)
         }.toInt
         stutterCounter.count(stutter, call.count)
-        alleleCounter.count(call.allele.getBaseString, call.count)
+        alleleCounter.count(call.repeatAllele.getBaseString, call.count)
       }
     StutterAndAlleleCounter(stutterCounter, alleleCounter)
   }
 
   /** Assumes a variant context produced by `StrGenotypeDuplexMolecules` and returns a [[NumericCounter]] that counts
     * the # of observations for each stutter event. */
-  private def collectSingle(str: StrInterval, ctx: VariantContext, refCalls: Seq[Float]): StutterAndAlleleCounter = {
+  private def collectConsensus(str: StrInterval, ctx: VariantContext, refCalls: Seq[Float]): StutterAndAlleleCounter = {
     // Get all calls seen, not just the one genotyped
     val counts = {
       val refCount  = ctx.getAttributeAsInt("REFAC", 0)
       val altCounts = ctx.getAttributeAsIntList("AC", 0).map(_.toInt).toSeq
       refCount +: altCounts
     }
-    val calls = StrAllele.toCalls(str, ctx, counts)
-
-    collect(refCalls, calls)
+    collect(refCalls, StrAllele.toCalls(str, ctx, counts))
   }
 
   /** Assumes a variant context produced by `HipSTR` and returns a [[NumericCounter]] that counts
@@ -315,7 +317,7 @@ private class StutterCounter(stutters: Seq[Int] = Seq.range(-5,6)) {
     }
   }
 
-  private def prettyPrintAllele(str: StrInterval, allele: String) = {
+  private def prettyPrintAllele(str: StrInterval, allele: String): String = {
     val counts = allele.grouped(str.unitLength).foldLeft(Seq[RepeatCounts]()) { case (repeatCounts: Seq[RepeatCounts], repeat: String) =>
         repeatCounts.lastOption.filter(_.repeat == repeat).map { previous =>
           repeatCounts.dropRight(1) :+ previous.copy(count=previous.count+1)

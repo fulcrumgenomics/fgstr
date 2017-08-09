@@ -29,7 +29,7 @@ import com.fulcrumgenomics.commons.io.{Io, PathUtil}
 import com.fulcrumgenomics.str.vcf.StrInterval.StrAllele
 import com.fulcrumgenomics.testing.{UnitSpec, VariantContextSetBuilder}
 import htsjdk.samtools.util.{Interval, IntervalList}
-import htsjdk.variant.variantcontext.{Allele, Genotype, VariantContext}
+import htsjdk.variant.variantcontext.{Allele, Genotype, VariantContext, VariantContextBuilder}
 import com.fulcrumgenomics.FgBioDef._
 import com.fulcrumgenomics.testing.ReferenceSetBuilder
 
@@ -45,14 +45,64 @@ class StrGenotypeDuplexMoleculesTest extends UnitSpec {
   }
 
   "StrAllele.toGenotype" should "format as an integer if the # of repeat units is a multiple of the unit length" in {
-    StrAllele(null, 10, 1, 10).toGenotype shouldBe "1"
-    StrAllele(null, 10, 1, 5).toGenotype  shouldBe "2"
-    StrAllele(null, 9,  1, 3).toGenotype  shouldBe "3"
+    StrAllele(Allele.create("ACCGTACCGT"), 10, 1, 10).toGenotype shouldBe "1"
+    StrAllele(Allele.create("ACCGTACCGT"), 10, 1, 5).toGenotype  shouldBe "2"
+    StrAllele(Allele.create("CCGTACCGT"),  9,  1, 3).toGenotype  shouldBe "3"
   }
 
   it should "format as an float if the # of repeat units is not a multiple of the unit length" in {
-    StrAllele(null, 10, 1, 3).toGenotype shouldBe "3.33"
-    StrAllele(null, 10, 1, 4).toGenotype shouldBe "2.50"
+    StrAllele(Allele.create("ACCGTACCGT"), 10, 1, 3).toGenotype shouldBe "3.33"
+    StrAllele(Allele.create("ACCGTACCGT"), 10, 1, 4).toGenotype shouldBe "2.50"
+  }
+
+  "StrAllele.toCalls" should "handle leading sequence" in {
+    val str = StrInterval(chrom="chr1", start=100, end=110, unitLength=5, refLength=2, name="test_str", truthCalls=Seq(2.0F, 1.0F))
+
+    // no leading sequence
+    {
+      val ctx = {
+        val builder = new VariantContextBuilder()
+        builder.chr("chr1"); builder.start(100); builder.stop(109)
+        builder.alleles("ACGTGACGTG", "ACGTG") // no leading bases
+        builder.make
+      }
+      val alleles = StrAllele.toCalls(str=str, ctx=ctx, counts=Seq(10, 20))
+
+      alleles.length shouldBe 2
+
+      alleles.head.allele.getBaseString shouldBe "ACGTG"
+      alleles.head.repeatAllele.getBaseString shouldBe "ACGTG"
+      alleles.head.count shouldBe 20
+      alleles.head.unitLength shouldBe 5
+
+      alleles.last.allele.getBaseString shouldBe "ACGTGACGTG"
+      alleles.last.repeatAllele.getBaseString shouldBe "ACGTGACGTG"
+      alleles.last.count shouldBe 10
+      alleles.last.unitLength shouldBe 5
+    }
+
+    // leading sequence
+    {
+      val ctx = {
+        val builder = new VariantContextBuilder()
+        builder.chr("chr1"); builder.start(98); builder.stop(109)
+        builder.alleles("TTACGTGACGTG", "TTACGTG") // leading bases
+        builder.make
+      }
+      val alleles = StrAllele.toCalls(str=str, ctx=ctx, counts=Seq(10, 20))
+
+      alleles.length shouldBe 2
+
+      alleles.head.allele.getBaseString shouldBe "TTACGTG"
+      alleles.head.repeatAllele.getBaseString shouldBe "ACGTG"
+      alleles.head.count shouldBe 20
+      alleles.head.unitLength shouldBe 5
+
+      alleles.last.allele.getBaseString shouldBe "TTACGTGACGTG"
+      alleles.last.repeatAllele.getBaseString shouldBe "ACGTGACGTG"
+      alleles.last.count shouldBe 10
+      alleles.last.unitLength shouldBe 5
+    }
   }
 
   private object Outputs {
@@ -152,14 +202,14 @@ class StrGenotypeDuplexMoleculesTest extends UnitSpec {
   it should "output two variants when overlapping STR intervals are given" in {
     val builder   = new VariantContextSetBuilder(sampleNames=List("mid-1234"))
 
-    builder.addVariant(refIdx=0, start=1, variantAlleles=List("AAA", "AAAAAA"), genotypeAlleles=List("AAAAAA"))
+    builder.addVariant(refIdx=0, start=1, variantAlleles=List("AAAAAAAAA", "AAAAAA"), genotypeAlleles=List("AAAAAA"))
 
     val intervals = {
       val dict = builder.header.getSequenceDictionary
       val ilist = makeTempFile("test.", ".interval_list")
       val intvs = new IntervalList(dict)
-      intvs.add(new Interval(dict.getSequence(0).getSequenceName, 1, 3, false, "3,1,NAME1"))
-      intvs.add(new Interval(dict.getSequence(0).getSequenceName, 1, 6, false, "3,2,NAME2"))
+      intvs.add(new Interval(dict.getSequence(0).getSequenceName, 1, 6, false, "9,1,NAME1"))
+      intvs.add(new Interval(dict.getSequence(0).getSequenceName, 1, 9, false, "3,3,NAME2"))
       intvs.write(ilist.toFile)
       ilist
     }
