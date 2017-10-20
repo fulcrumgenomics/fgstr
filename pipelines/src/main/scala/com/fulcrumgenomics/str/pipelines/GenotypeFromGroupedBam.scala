@@ -213,8 +213,12 @@ private class GenotypeStr
     }
 
     // FIXME: https://github.com/tfwillems/HipSTR/issues/36
-    val updateVcf = new UpdateVcfSequenceDictionary(in=hipStrVcf, out=updatedVcf, dict)
-    updateVcf.createIndex = Some(false) // FIXME: https://github.com/broadinstitute/picard/issues/863
+    val updateVcf = {
+      val up = new UpdateVcfSequenceDictionary(in=hipStrVcf, out=Io.StdOut, dict)
+      up.createIndex = Some(false) // FIXME: https://github.com/broadinstitute/picard/issues/863
+      val compress =  new ShellCommand(configureExecutableFromBinDirectory(BgzipBinConfigKey, "bgzip").toString, "-c") with PipeWithNoResources[Vcf,Vcf]
+      up | compress > updatedVcf
+    }
 
     // Filter the haploid calls
     val filterVcf = {
