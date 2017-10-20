@@ -206,14 +206,20 @@ class CollectStutterMetrics
       val calls: Seq[StrAllele] = genotype.getAttributeAsString("ALLREADS", "")
         .split(';')
         .filter(_.nonEmpty)
-        .map { keyVal =>
+        .flatMap { keyVal =>
           keyVal.split('|').toSeq match {
             case Seq(bpDiff, count) =>
-              // NB: bpDiff is the # of bases different relative to the reference!
+              // NB: bpDiff is the # of bases different relative to the reference!  Hence we need to "fake" an allele here.
               val alleleLength = bpDiff.toInt + (str.refLength * str.unitLength)
-              val alleleString = if (alleleLength > 0) "N" * alleleLength else "N" // FIXME
-              val allele = Allele.create(alleleString) // FIXME
-              StrAllele(allele=allele, alleleLength=alleleLength, count=count.toInt, unitLength=str.unitLength)
+              if (alleleLength <= 0) {
+                logger.warning(s"Found an allele length of $alleleLength with count $count for STR '$str' and genotype '$genotype'")
+                None
+              }
+              else {
+                val alleleString = "N" * alleleLength
+                val allele = Allele.create(alleleString)
+                Some(StrAllele(allele = allele, alleleLength = alleleLength, count = count.toInt, unitLength = str.unitLength))
+              }
             case _ => throw new IllegalArgumentException(s"Could not parse ALLREADS entry: $keyVal")
           }
        }
