@@ -29,6 +29,7 @@ import com.fulcrumgenomics.testing.{SamBuilder, UnitSpec}
 import htsjdk.samtools.SAMReadGroupRecord
 import com.fulcrumgenomics.FgBioDef._
 import com.fulcrumgenomics.bam.api.{SamRecord, SamSource}
+import com.fulcrumgenomics.umi.ConsensusTags
 import htsjdk.samtools.util.{Interval, IntervalList, Iso8601Date}
 
 class ReadGroupPerDuplexMolecularIdTest extends UnitSpec {
@@ -96,8 +97,8 @@ class ReadGroupPerDuplexMolecularIdTest extends UnitSpec {
     // update to make the tests below easier
     builder.rg.setSample("Sample-1234")
     builder.rg.setLibrary("Library-1234")
-    builder.rg.setAttribute("cA", "1")
-    builder.rg.setAttribute("cB", "1")
+    builder.rg.setAttribute(ConsensusTags.PerRead.AbRawReadCount, "1")
+    builder.rg.setAttribute(ConsensusTags.PerRead.BaRawReadCount, "0")
 
     readGroups.length shouldBe 1
     readGroups.head.equivalent(builder.rg) shouldBe true
@@ -300,8 +301,8 @@ class ReadGroupPerDuplexMolecularIdTest extends UnitSpec {
       else {
         builder.rg.setSample("Sample-0")
       }
-      builder.rg.setAttribute("cA", "0")
-      builder.rg.setAttribute("cB", "0")
+      builder.rg.setAttribute(ConsensusTags.PerRead.AbRawReadCount, "0")
+      builder.rg.setAttribute(ConsensusTags.PerRead.BaRawReadCount, "0")
       readGroups.head.equivalent(builder.rg) shouldBe true
     }
   }

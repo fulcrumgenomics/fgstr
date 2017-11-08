@@ -188,8 +188,8 @@ class ReadGroupPerDuplexMolecularId
 
     def toReadGroup(mid: String, countA: Long, countB: Long): SAMReadGroupRecord = {
       val readGroup = new SAMReadGroupRecord(s"mid-$mid")
-      readGroup.setAttribute("cA", countA.toString) // Custom count
-      readGroup.setAttribute("cB", countA.toString) // Custom count
+      readGroup.setAttribute(ConsensusTags.PerRead.AbRawReadCount, countA.toString) // Custom count
+      readGroup.setAttribute(ConsensusTags.PerRead.BaRawReadCount, countB.toString) // Custom count
       readGroup.setSample(toReadGroupValue(_.getSample, s"-$mid"))
       readGroup.setLibrary(toReadGroupValue(_.getLibrary, s"-$mid"))
       readGroup.setPlatform(toReadGroupValue(_.getPlatform))
