@@ -45,7 +45,7 @@ import htsjdk.samtools.{SAMFileHeader, SAMReadGroupRecord}
 
 import scala.collection.mutable
 
-@clp(group=ClpGroups.VcfOrBcf, description=
+@clp(group=ClpGroups.SamOrBam, description=
   """
     |Creates a BAM file with a read group per duplex molecule ID.
     |
@@ -98,7 +98,7 @@ class ReadGroupPerDuplexMolecularId
   private val toMolecularId: SamRecord => String = rec => if (this.perStrand) rec[String](assignTag) else FgStrDef.toMolecularId(rec, assignTag).toString
   private val filters = DuplexFilters(minReads)
   private var overlappingReads: Long = 0
-  private var numNonSpaningReads: Long = 0
+  private var numNonSpanningReads: Long = 0
 
   validate(input.toAbsolutePath != Io.StdIn, "Reading from standard input is not supported")
 
@@ -128,7 +128,7 @@ class ReadGroupPerDuplexMolecularId
       in.safelyClose()
       tmpWriter.close()
       logger.info(s"Extracted ${mids.iterator.length} molecular ids across ${progress.getCount} raw reads")
-      if (span) logger.info(f"Skipped $numNonSpaningReads out of $overlappingReads (${numNonSpaningReads/overlappingReads.toDouble * 100}%.2f%%) overlapping reads due to not fully spanning the STR")
+      if (span) logger.info(f"Skipped $numNonSpanningReads out of $overlappingReads (${numNonSpanningReads/overlappingReads.toDouble * 100}%.2f%%) overlapping reads due to not fully spanning the STR")
     }
 
     // Pass 2: update the header and records
@@ -255,7 +255,7 @@ class ReadGroupPerDuplexMolecularId
                   true
                 }
                 else {
-                  if (overlaps.nonEmpty) numNonSpaningReads += 1
+                  if (overlaps.nonEmpty) numNonSpanningReads += 1
                   false
                 }
               }
