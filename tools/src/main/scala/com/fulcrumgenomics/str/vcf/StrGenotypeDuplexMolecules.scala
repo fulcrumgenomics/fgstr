@@ -79,7 +79,7 @@ import scala.util.Failure
     |0. Remove all alleles not seen at sufficient depth (see `--min-depth`).
     |1. Rank the haploid calls by descending frequency.
     |2. If the cumulative frequency of the called alleles is greater than or equal to the threshold
-    |   (`--min-cumulative-frequency), go to step 4.
+    |   (`--min-cumulative-frequency`), go to step 4.
     |3. Include the allele from the most frequent haploid call and go to step 2.
     |4. If we have only one allele, call it homozygous (diploid), otherwise the ploidy is equal to the # of alleles.
     |
