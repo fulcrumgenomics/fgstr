@@ -25,8 +25,6 @@
 
 package com.fulcrumgenomics.str.pipelines
 
-import java.nio.file.Files
-
 import com.fulcrumgenomics.commons.CommonsDef._
 import com.fulcrumgenomics.commons.io.{Io, PathUtil}
 import com.fulcrumgenomics.sopt.{arg, clp}
@@ -95,6 +93,7 @@ class GenotypeFromGroupedBam
  @arg(flag='M', minElements=1, maxElements=3, doc="The minimum number of raw reads per source molecule.")
  val minReads: Seq[Int] = Seq(1),
  @arg(flag='s', doc="Call genotypes per-duplex-strand") val perStrand: Boolean = false,
+ @arg(          doc="Require that reads that span the given intervals (i.e. do not start/stop within)") val span: Boolean = false,
  @arg(flag='t', doc="Temporary directory in which to store intermediate results.") val tmp: Option[DirPath] = None,
  @arg(          doc="Keep intermediate files.") val keepIntermediates: Boolean = false
 ) extends Pipeline(Some(output.getParent.getFileName)) {
@@ -127,6 +126,7 @@ class GenotypeFromGroupedBam
         intervalList = intervalList,
         minReads     = minReads,
         perStrand    = perStrand,
+        span         = span,
         output       = tmpDir.resolve(strName)
       )
     }
@@ -161,6 +161,7 @@ private class GenotypeStr
   val intervalList: IntervalList,
   val minReads: Seq[Int] = Seq(1),
   val perStrand: Boolean = false,
+  val span: Boolean = false,
   val output: DirPath,
   val suffix: Option[String] = None
 ) extends Pipeline(suffix=Some("." + output.getFileName)) with Configuration {
@@ -197,17 +198,17 @@ private class GenotypeStr
     val toHipstrVcf = if (perStrand) {
       val strandBam = f(".mid.per_strand.bam")
       // learn the stutter model from calling reads from the same duplex source molecule
-      val toDuplexRgBam  = new ReadGroupPerDuplexMolecularId(input=input, output=midBam, ref=Some(ref), intervals=Some(intervals), minReads=minReads)
+      val toDuplexRgBam  = new ReadGroupPerDuplexMolecularId(input=input, output=midBam, ref=Some(ref), intervals=Some(intervals), minReads=minReads, span=span)
       val toStutterModel = new HipStr(input=midBam, ref=ref, regions=bed, output=hipStrVcfSS, stutterOut=Some(stutter), haploidChromosomes=Some(intervalList))
 
       // apply the stutter model when calling reads from the same strand of the duplex source molecule
-      val toStrandRgBam  = new ReadGroupPerDuplexMolecularId(input=input, output=strandBam, ref=Some(ref), intervals=Some(intervals), minReads=minReads, perStrand=true)
+      val toStrandRgBam  = new ReadGroupPerDuplexMolecularId(input=input, output=strandBam, ref=Some(ref), intervals=Some(intervals), minReads=minReads, perStrand=true, span=span)
       val toHipstrVcf    = new HipStr(input=strandBam, ref=ref, regions=bed, output=hipStrVcf, stutterIn=Some(stutter), haploidChromosomes=Some(intervalList), useUnpaired=useUnpaired)
 
       toIntervals ==> (((toBed :: toDuplexRgBam) ==> toStutterModel) :: toStrandRgBam) ==> toHipstrVcf
     }
     else {
-      val toRgBam     = new ReadGroupPerDuplexMolecularId(input=input, output=midBam, ref=Some(ref), intervals=Some(intervals), minReads=minReads)
+      val toRgBam     = new ReadGroupPerDuplexMolecularId(input=input, output=midBam, ref=Some(ref), intervals=Some(intervals), minReads=minReads, span=span)
       val toHipstrVcf = new HipStr(input=midBam, ref=ref, regions=bed, output=hipStrVcf, haploidChromosomes=Some(intervalList), useUnpaired=useUnpaired)
       toIntervals ==> (toBed :: toRgBam) ==> toHipstrVcf
     }

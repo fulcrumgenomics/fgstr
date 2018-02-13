@@ -37,7 +37,8 @@ class ReadGroupPerDuplexMolecularId(input: PathToBam,
                                     intervals: Option[PathToIntervals] = None,
                                     minReads: Seq[Int] = Seq(1),
                                     perStrand: Boolean = false,
-                                    samOrder: Option[SamOrder] = Some(SamOrder.Coordinate))
+                                    samOrder: Option[SamOrder] = Some(SamOrder.Coordinate),
+                                    span: Boolean = false)
   extends FgStrTask {
 
   protected def addFgStrArgs(buffer: ListBuffer[Any]): Unit = {
@@ -48,5 +49,6 @@ class ReadGroupPerDuplexMolecularId(input: PathToBam,
     buffer.append("-M"); buffer.append(minReads:_*)
     buffer.append("-s", perStrand)
     samOrder.foreach(s => buffer.append("-S", s))
+    buffer.append("--span", span)
   }
 }
