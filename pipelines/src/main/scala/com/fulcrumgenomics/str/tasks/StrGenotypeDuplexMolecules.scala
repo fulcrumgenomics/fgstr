@@ -34,7 +34,8 @@ class StrGenotypeDuplexMolecules(input: PathToBam,
                                  output: PathToBam,
                                  ref: PathToFasta,
                                  intervals: PathToIntervals,
-                                 perStrand: Boolean = false)
+                                 perStrand: Boolean = false,
+                                 minCumulativeFrequency: Option[Double] = None)
   extends FgStrTask {
   requires(1, "2g")
 
@@ -44,5 +45,6 @@ class StrGenotypeDuplexMolecules(input: PathToBam,
     buffer.append("-r", ref)
     buffer.append("-l", intervals)
     buffer.append("-s", perStrand)
+    minCumulativeFrequency.foreach(m => buffer.append("-m", m))
   }
 }

@@ -33,10 +33,10 @@ import com.fulcrumgenomics.str.tasks._
 import dagr.core.cmdline.Pipelines
 import dagr.core.config.Configuration
 import dagr.core.tasksystem.Pipes.PipeWithNoResources
-import dagr.core.tasksystem.{Pipeline, Pipes, ShellCommand, SimpleInJvmTask}
+import dagr.core.tasksystem.{Pipeline, ShellCommand, SimpleInJvmTask}
 import dagr.tasks.DagrDef.{FilePath, PathPrefix, PathToBam, PathToFasta, PathToIntervals}
 import dagr.tasks.DataTypes.Vcf
-import dagr.tasks.ScatterGather.{Gather, Partitioner, Scatter}
+import dagr.tasks.ScatterGather.{Partitioner, Scatter}
 import dagr.tasks.misc.{DeleteFiles, IndexVcfGz}
 import dagr.tasks.picard.{GatherVcfs, UpdateVcfSequenceDictionary}
 import dagr.tasks.vc.FilterFreeBayesCalls.BgzipBinConfigKey
@@ -94,6 +94,7 @@ class GenotypeFromGroupedBam
  val minReads: Seq[Int] = Seq(1),
  @arg(flag='s', doc="Call genotypes per-duplex-strand") val perStrand: Boolean = false,
  @arg(          doc="Require that reads that span the given intervals (i.e. do not start/stop within)") val span: Boolean = false,
+ @arg(flag='m', doc="Cumulative allele frequency threshold to require.") val minCumulativeFrequency: Option[Double] = None,
  @arg(flag='t', doc="Temporary directory in which to store intermediate results.") val tmp: Option[DirPath] = None,
  @arg(          doc="Keep intermediate files.") val keepIntermediates: Boolean = false
 ) extends Pipeline(Some(output.getParent.getFileName)) {
@@ -121,13 +122,14 @@ class GenotypeFromGroupedBam
     val genotypes = scatter.map { intervalList =>
       val strName = toStrName(intervalList)
       new GenotypeStr(
-        input        = input,
-        ref          = ref,
-        intervalList = intervalList,
-        minReads     = minReads,
-        perStrand    = perStrand,
-        span         = span,
-        output       = tmpDir.resolve(strName)
+        input                  = input,
+        ref                    = ref,
+        intervalList           = intervalList,
+        minReads               = minReads,
+        perStrand              = perStrand,
+        span                   = span,
+        minCumulativeFrequency = minCumulativeFrequency,
+        output                 = tmpDir.resolve(strName)
       )
     }
 
@@ -162,6 +164,7 @@ private class GenotypeStr
   val minReads: Seq[Int] = Seq(1),
   val perStrand: Boolean = false,
   val span: Boolean = false,
+  val minCumulativeFrequency: Option[Double] = None,
   val output: DirPath,
   val suffix: Option[String] = None
 ) extends Pipeline(suffix=Some("." + output.getFileName)) with Configuration {
@@ -172,7 +175,7 @@ private class GenotypeStr
 
   private def f(ext: String): FilePath = PathUtil.pathTo(output + ext)
 
-  val hipStrCalls = f(".filteredVcf.vcf.gz")
+  val hipStrCalls: FilePath = f(".filteredVcf.vcf.gz")
 
   def build(): Unit = {
 
@@ -229,7 +232,7 @@ private class GenotypeStr
     val indexFilteredVcf = new IndexVcfGz(hipStrCalls)
 
     // merge the per-duplex calls into a single-sample call
-    val toFinalVcf    = new StrGenotypeDuplexMolecules(input=hipStrCalls, output=output, ref=ref, intervals=intervals, perStrand=perStrand)
+    val toFinalVcf    = new StrGenotypeDuplexMolecules(input=hipStrCalls, output=output, ref=ref, intervals=intervals, perStrand=perStrand, minCumulativeFrequency=minCumulativeFrequency)
     root ==> toHipstrVcf ==> updateVcf ==> filterVcf ==> indexFilteredVcf ==> toFinalVcf
   }
 }
