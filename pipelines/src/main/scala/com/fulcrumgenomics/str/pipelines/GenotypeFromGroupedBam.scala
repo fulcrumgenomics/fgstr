@@ -94,7 +94,7 @@ class GenotypeFromGroupedBam
  val minReads: Seq[Int] = Seq(1),
  @arg(flag='s', doc="Call genotypes per-duplex-strand") val perStrand: Boolean = false,
  @arg(          doc="Require that reads that span the given intervals (i.e. do not start/stop within)") val span: Boolean = false,
- @arg(flag='m', doc="Cumulative allele frequency threshold to require.") val minCumulativeFrequency: Option[Double] = None,
+ @arg(flag='F', doc="Cumulative allele frequency threshold to require.") val minCumulativeFrequency: Option[Double] = None,
  @arg(flag='t', doc="Temporary directory in which to store intermediate results.") val tmp: Option[DirPath] = None,
  @arg(          doc="Keep intermediate files.") val keepIntermediates: Boolean = false
 ) extends Pipeline(Some(output.getParent.getFileName)) {

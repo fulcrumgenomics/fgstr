@@ -73,6 +73,8 @@ class GenotypeWithDuplexSequencing
   @arg(flag='M', minElements=1, maxElements=3, doc="The minimum number of raw reads per source molecule.")
   val minReads: Seq[Int] = Seq(1),
   @arg(flag='s', doc="Call genotypes per-duplex-strand") val perStrand: Boolean = false,
+  @arg(          doc="Require that reads that span the given intervals (i.e. do not start/stop within)") val span: Boolean = false,
+  @arg(flag='F', doc="Cumulative allele frequency threshold to require.") val minCumulativeFrequency: Option[Double] = None,
   @arg(          doc="Keep intermediate files when genotyping.") val keepIntermediates: Boolean = false
 
 ) extends Pipeline(outputDirectory=Some(output.getParent)) {
@@ -93,23 +95,25 @@ class GenotypeWithDuplexSequencing
 
     val mapAndGroup = new MapAndGroupRawReads(
       unmappedBam = prepare.unmappedBamFile,
-      ref = ref,
-      intervals = intervals,
-      output = output,
-      umiTag = umiTag,
-      minMapQ = minMapQ,
-      edits = edits
+      ref         = ref,
+      intervals   = intervals,
+      output      = output,
+      umiTag      = umiTag,
+      minMapQ     = minMapQ,
+      edits       = edits
     )
 
     val genotype = new GenotypeFromGroupedBam(
-      input = mapAndGroup.groupedBamFile,
-      ref = ref,
-      intervals = intervals,
-      output = output,
-      minReads = minReads,
-      perStrand = perStrand,
-      keepIntermediates = keepIntermediates,
-      tmp = tmp
+      input                  = mapAndGroup.groupedBamFile,
+      ref                    = ref,
+      intervals              = intervals,
+      output                 = output,
+      minReads               = minReads,
+      perStrand              = perStrand,
+      span                   = span,
+      minCumulativeFrequency = minCumulativeFrequency,
+      keepIntermediates      = keepIntermediates,
+      tmp                    = tmp
     )
 
     root ==> prepare ==> mapAndGroup ==> genotype
